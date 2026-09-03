@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * This file is part of the ALTO library.
+ *
+ * © 2026-present Simon André
+ *
+ * For full copyright and license information, please see
+ * the LICENSE file distributed with this source code.
+ */
+
+namespace Alto\Image\Tests;
+
+use Alto\Image\Focus;
+use Alto\Image\Tests\Support\SourceClassTestCase;
+use PHPUnit\Framework\Attributes\CoversClass;
+
+#[CoversClass(Focus::class)]
+final class FocusTest extends SourceClassTestCase
+{
+    protected const string SUBJECT = Focus::class;
+
+    public function testStrategiesHaveStableTransformValues(): void
+    {
+        self::assertSame('entropy', Focus::Entropy->value);
+        self::assertSame('attention', Focus::Attention->value);
+    }
+}

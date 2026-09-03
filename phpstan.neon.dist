@@ -1,0 +1,13 @@
+parameters:
+    level: max
+    paths:
+        - bin/image
+        - src
+        - tests
+    excludePaths:
+        - tests/Fixtures/*
+    checkUninitializedProperties: true
+    reportUnmatchedIgnoredErrors: true
+    treatPhpDocTypesAsCertain: false
+    tipsOfTheDay: false
+    reportWrongPhpDocTypeInVarTag: true

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="768" viewBox="0 0 432 768">
+  <rect width="432" height="768" fill="#f7f5f0"/>
+
+  <rect x="144" width="144" height="256" fill="#dedbd5"/>
+  <rect y="256" width="144" height="256" fill="#dedbd5"/>
+  <rect x="144" y="256" width="144" height="256" fill="#08080a"/>
+  <rect x="288" y="256" width="144" height="256" fill="#dedbd5"/>
+  <rect x="144" y="512" width="144" height="256" fill="#dedbd5"/>
+
+  <g fill="#25252a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="22" font-weight="700" text-anchor="middle">
+    <text x="72" y="136">TL</text>
+    <text x="216" y="136">T</text>
+    <text x="360" y="136">TR</text>
+    <text x="72" y="392">L</text>
+    <text x="360" y="392">R</text>
+    <text x="72" y="648">BL</text>
+    <text x="216" y="648">B</text>
+    <text x="360" y="648">BR</text>
+  </g>
+
+  <svg x="158" y="369" width="116" height="30" viewBox="0 0 346 90" aria-label="ALTO">
+    <path fill="#f7f5f0" d="m.1 87 44-84 44 84h-8.7L44.1 20.2 8.7 86.9zM110.8 3h7.9v76h52v8h-59.9zM174.3 3h72.2V11h-31.8v76h-7.9V11h-32.5zM296.8 3.3c10.2-1.7 20.7.3 29.5 5.8L322 16a34.1 34.1 0 1 0 11 10.9l6.7-4.3a42.3 42.3 0 1 1-43-19.3"/>
+  </svg>
+
+  <g fill="none" stroke="#25252a" stroke-width="4">
+    <path d="M144 0v768M288 0v768M0 256h432M0 512h432"/>
+    <rect x="4" y="4" width="424" height="760"/>
+  </g>
+
+  <circle cx="28" cy="28" r="12" fill="#00b7ff" stroke="#25252a" stroke-width="4"/>
+</svg>

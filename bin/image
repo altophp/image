@@ -1,0 +1,339 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * This file is part of the ALTO library.
+ *
+ * © 2026-present Simon André
+ *
+ * For full copyright and license information, please see
+ * the LICENSE file distributed with this source code.
+ */
+
+namespace Alto\Image\Cli;
+
+use Alto\Image\Driver\Gd\GdDriver;
+use Alto\Image\Driver\Plan;
+use Alto\Image\Exception\ImageExceptionInterface;
+use Alto\Image\Format;
+use Alto\Image\Image;
+use Alto\Image\Source;
+use Alto\Image\Transform;
+
+foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+
+        break;
+    }
+}
+
+if (!class_exists(Image::class)) {
+    fwrite(\STDERR, "Could not find the autoloader. Run composer install.\n");
+
+    exit(1);
+}
+
+/**
+ * doctor, info, convert. Three commands and no framework.
+ *
+ * `doctor` is the one that earns its place: it prints what the installed
+ * extensions can actually do, and it warns about the one thing nobody knows,
+ * which is that a PHP linked against an external libgd allocates pixel buffers
+ * outside memory_limit entirely.
+ */
+final class Cli
+{
+    private const string BOLD = "\033[1m";
+    private const string DIM = "\033[2m";
+    private const string WARN = "\033[33m";
+    private const string BAD = "\033[31m";
+    private const string OFF = "\033[0m";
+
+    private bool $colour;
+
+    /**
+     * @param list<string> $argv
+     */
+    public function __construct(private readonly array $argv)
+    {
+        $this->colour = \function_exists('posix_isatty') && @posix_isatty(\STDOUT) && false === getenv('NO_COLOR');
+    }
+
+    public function run(): int
+    {
+        $command = $this->argv[1] ?? 'help';
+
+        try {
+            return match ($command) {
+                'doctor' => $this->doctor(),
+                'info' => $this->info(),
+                'convert' => $this->convert(),
+                'help', '--help', '-h' => $this->help(),
+                default => $this->unknown($command),
+            };
+        } catch (ImageExceptionInterface $error) {
+            $this->line('');
+            $this->line($this->paint(self::BAD, $error::class));
+
+            foreach (explode("\n", $error->getMessage()) as $line) {
+                $this->line('  ' . $line);
+            }
+
+            $this->line('');
+
+            return 1;
+        }
+    }
+
+    /**
+     * What this machine can do, and what it cannot.
+     */
+    private function doctor(): int
+    {
+        $this->line('');
+        $this->line(\sprintf(
+            'PHP %s   memory_limit=%s   ext-ffi=%s',
+            \PHP_VERSION,
+            (string) \ini_get('memory_limit'),
+            \extension_loaded('FFI') ? 'on' : 'off',
+        ));
+        $this->line('');
+
+        $rows = [];
+        $warnings = [];
+        $widest = \strlen('READ');
+
+        foreach (Plan::known() as $driver) {
+            $capabilities = $driver->capabilities();
+
+            if (!$capabilities->isAvailable()) {
+                $rows[] = [$driver->name(), $this->paint(self::DIM, 'not installed'), ''];
+
+                continue;
+            }
+
+            $reads = implode(' ', $capabilities->readNames());
+            $widest = max($widest, \strlen($reads));
+
+            $rows[] = [
+                substr($driver->name() . ' (' . $this->shortVersion($capabilities->version) . ')', 0, 21),
+                $reads,
+                implode(' ', $capabilities->writeNames()),
+            ];
+
+            foreach ($capabilities->notes as $note) {
+                $warnings[] = [$driver->name(), $note];
+            }
+        }
+
+        $this->line($this->paint(self::BOLD, \sprintf('%-22s %-' . $widest . 's  %s', 'DRIVER', 'READ', 'WRITE')));
+
+        foreach ($rows as [$name, $reads, $writes]) {
+            $this->line(rtrim(\sprintf('%-22s %-' . $widest . 's  %s', $name, $reads, $writes)));
+        }
+
+        if ([] === Plan::installed()) {
+            $warnings[] = ['php', 'no image extension at all: everything but rendering still works, '
+                . 'including size(), signature() and Store::path().'];
+        }
+
+        if ([] !== $warnings) {
+            $this->line('');
+            $this->line($this->paint(self::BOLD, 'WARNINGS'));
+
+            foreach ($warnings as [$name, $note]) {
+                $this->line(\sprintf('  %-6s %s', $name, $this->paint(self::WARN, $note)));
+            }
+        }
+
+        if (GdDriver::isLinkedExternally()) {
+            $this->line('');
+            $this->line('  Verified here: ' . $this->externalGdEvidence());
+        }
+
+        $this->line('');
+
+        return 0;
+    }
+
+    /**
+     * What a file is, from its header, without decoding it.
+     */
+    private function info(): int
+    {
+        $paths = \array_slice($this->argv, 2);
+
+        if ([] === $paths) {
+            $this->line('Usage: image info <file>...');
+
+            return 2;
+        }
+
+        foreach ($paths as $path) {
+            $source = Source::file($path);
+            $metadata = $source->metadata();
+
+            $this->line('');
+            $this->line($this->paint(self::BOLD, $path));
+            $this->pair('format', $metadata->format->value . '  ' . $metadata->format->mime());
+            $this->pair('stored', (string) $metadata->size);
+
+            if ($metadata->isTransposed()) {
+                $this->pair('displayed', (string) $metadata->displaySize());
+            }
+
+            $this->pair('orientation', (string) $metadata->orientation);
+            $this->pair('alpha', $metadata->hasAlpha ? 'yes' : 'no');
+            $this->pair('frames', (string) $metadata->frames);
+            $this->pair('colour space', $metadata->colourSpace);
+            $this->pair('metadata', $metadata->hasMetadata ? 'exif, iptc or xmp present' : 'none');
+            $this->pair('bytes', number_format($metadata->bytes ?? 0));
+            $this->pair('signature', $source->signature());
+            $this->pair('read', 'header only, no decoder involved');
+        }
+
+        $this->line('');
+
+        return 0;
+    }
+
+    /**
+     * One file in, one file out, with a transform written as a string.
+     */
+    private function convert(): int
+    {
+        $source = $this->argv[2] ?? null;
+        $destination = $this->argv[3] ?? null;
+        $transform = $this->argv[4] ?? '';
+
+        if (null === $source || null === $destination) {
+            $this->line('Usage: image convert <source> <destination> [transform]');
+            $this->line('');
+            $this->line('  The transform is the same string a URL carries:');
+            $this->line('    image convert photo.jpg hero.webp "cover=1280x720,g:attention|sharpen"');
+            $this->line('');
+            $this->line('  Known operations: ' . implode(', ', array_keys(Transform::defaults())));
+
+            return 2;
+        }
+
+        $image = Image::open($source);
+
+        if ('' !== $transform) {
+            $image = $image->transformedBy(Transform::parse($transform));
+        }
+
+        $format = Format::tryFromExtension(pathinfo($destination, \PATHINFO_EXTENSION));
+
+        if (null !== $format) {
+            $image = $image->encode($format);
+        }
+
+        $this->line('');
+        $this->pair('source', $source . '  ' . $image->sourceMetadata());
+        $this->pair('projected', (string) $image->size());
+
+        $result = $image->save($destination);
+
+        $this->pair('driver', $result->driver);
+        $this->pair('written', $destination . '  ' . $result);
+
+        foreach ($result->degradations as $degradation) {
+            $this->line('  ' . $this->paint(self::WARN, $degradation));
+        }
+
+        $this->line('');
+
+        return 0;
+    }
+
+    private function help(): int
+    {
+        $this->line('');
+        $this->line($this->paint(self::BOLD, 'alto/image'));
+        $this->line('');
+        $this->line('  image doctor                                  what this machine can do, and what it cannot');
+        $this->line('  image info <file>...                          what a file is, from its header, without decoding');
+        $this->line('  image convert <src> <dst> [transform]         one file in, one file out');
+        $this->line('');
+
+        return 0;
+    }
+
+    private function unknown(string $command): int
+    {
+        $this->line(\sprintf('Unknown command "%s".', $command));
+        $this->help();
+
+        return 2;
+    }
+
+    /**
+     * The claim from the design notes, re-run on this machine rather than quoted.
+     */
+    private function externalGdEvidence(): string
+    {
+        if (!\extension_loaded('gd')) {
+            return 'ext-gd is not loaded.';
+        }
+
+        $before = memory_get_peak_usage(true);
+        $image = @imagecreatetruecolor(2000, 1500);
+        $after = memory_get_peak_usage(true);
+
+        if (false === $image) {
+            return 'a 2000x1500 truecolour image could not be allocated at all.';
+        }
+
+        return \sprintf(
+            'a 2000x1500 truecolour image is 12 MB of pixels, and PHP reported %.1f MB of it. '
+            . 'Limits::maxPixels is your only decompression-bomb guard.',
+            ($after - $before) / 1024 / 1024,
+        );
+    }
+
+    private function shortVersion(string $version): string
+    {
+        if (1 === preg_match('/(\d+\.\d+\.\d+(?:-\d+)?)/', $version, $found)) {
+            return $found[1];
+        }
+
+        return $version;
+    }
+
+    private function pair(string $label, string $value): void
+    {
+        $this->line(\sprintf('  %-14s %s', $label, $value));
+    }
+
+    private function line(string $text): void
+    {
+        $this->write($text . "\n");
+    }
+
+    private function write(string $text): void
+    {
+        fwrite(\STDOUT, $text);
+    }
+
+    private function paint(string $colour, string $text): string
+    {
+        return $this->colour ? $colour . $text . self::OFF : $text;
+    }
+}
+
+$arguments = [];
+$serverArguments = $_SERVER['argv'] ?? [];
+
+if (is_array($serverArguments)) {
+    foreach ($serverArguments as $argument) {
+        if (is_string($argument)) {
+            $arguments[] = $argument;
+        }
+    }
+}
+
+exit((new Cli($arguments))->run());

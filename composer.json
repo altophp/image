@@ -1,0 +1,87 @@
+{
+    "name": "alto/image",
+    "description": "Lazy image resizing, cropping and encoding with predictable geometry and efficient multi-output rendering.",
+    "license": "MIT",
+    "type": "library",
+    "keywords": [
+        "image",
+        "resize",
+        "thumbnail",
+        "crop",
+        "webp",
+        "avif",
+        "gd",
+        "imagick"
+    ],
+    "authors": [
+        {
+            "name": "Simon André",
+            "email": "smn.andre@gmail.com"
+        }
+    ],
+    "homepage": "https://altophp.com/image",
+    "support": {
+        "issues": "https://github.com/altophp/image/issues",
+        "source": "https://github.com/altophp/image",
+        "docs": "https://altophp.com/image"
+    },
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/sponsors/smnandre"
+        }
+    ],
+    "require": {
+        "php": ">=8.3"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.94",
+        "league/flysystem": "^3.0",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.5 || ^12.5"
+    },
+    "conflict": {
+        "ext-imagick": "<3.7"
+    },
+    "suggest": {
+        "ext-gd": "Bundled with PHP. Enables the GD driver.",
+        "ext-imagick": "TIFF, HEIC, CMYK, ICC conversion, SVG rasterization, and shrink-on-load.",
+        "league/flysystem": "Enables FlysystemStore, so derivatives can live on S3 or any other adapter.",
+        "phpunit/phpunit": "Required to extend Alto\\Image\\Test\\DriverTestCase when writing a driver."
+    },
+    "autoload": {
+        "psr-4": {
+            "Alto\\Image\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Alto\\Image\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/image"
+    ],
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "check": "@qa",
+        "coverage": [
+            "@php -d pcov.enabled=1 vendor/bin/phpunit --coverage-clover=.phpunit.cache/coverage.xml --coverage-text --only-summary-for-coverage-text",
+            "@php tests/coverage-threshold.php .phpunit.cache/coverage.xml 100"
+        ],
+        "cs": "vendor/bin/php-cs-fixer fix --dry-run --diff --sequential",
+        "cs-check": "@cs",
+        "cs-fix": "@cs:fix",
+        "cs:fix": "vendor/bin/php-cs-fixer fix --sequential",
+        "phpstan": "@sa",
+        "qa": [
+            "@cs",
+            "@sa",
+            "@test"
+        ],
+        "sa": "vendor/bin/phpstan analyse --memory-limit=-1",
+        "test": "phpunit"
+    }
+}

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A starting point for /etc/ImageMagick-7/policy.xml.
+
+  Two things worth knowing before you copy it.
+
+  The first is that a policy here always wins over Alto\Image\Driver\Imagick\
+  ResourcePolicy, silently: setResourceLimit() returns true, the limit does not
+  move, and the deployment believes it raised something it did not. That is why
+  ResourcePolicy reads every value back and `vendor/bin/image doctor` prints the
+  ones that did not land.
+
+  The second is that the resource numbers below are in bytes and have to be
+  budgeted against your build's bytes per pixel, which is not four. A stock
+  Q16-HDRI ImageMagick stores four floats per pixel, so sixteen. Budget for
+  fewer and a large resize quietly falls onto the disk cache, which is slower
+  than the work it was avoiding and fails outright when /tmp is small.
+
+  The coder rules are the part that matters most. ImageMagick's delegate system
+  will happily shell out, and MSL, MVG, EPHEMERAL, URL and HTTPS have all been
+  remote-code-execution vectors. A web application that resizes uploads needs
+  none of them.
+-->
+<policymap>
+  <!-- Refuse the delegates that have been used to run code. -->
+  <policy domain="coder" rights="none" pattern="EPHEMERAL"/>
+  <policy domain="coder" rights="none" pattern="MSL"/>
+  <policy domain="coder" rights="none" pattern="MVG"/>
+  <policy domain="coder" rights="none" pattern="URL"/>
+  <policy domain="coder" rights="none" pattern="HTTPS"/>
+  <policy domain="coder" rights="none" pattern="HTTP"/>
+  <policy domain="coder" rights="none" pattern="FTP"/>
+  <policy domain="coder" rights="none" pattern="TEXT"/>
+  <policy domain="coder" rights="none" pattern="SHOW"/>
+  <policy domain="coder" rights="none" pattern="WIN"/>
+  <policy domain="coder" rights="none" pattern="PLT"/>
+  <policy domain="coder" rights="none" pattern="PS"/>
+  <policy domain="coder" rights="none" pattern="PS2"/>
+  <policy domain="coder" rights="none" pattern="PS3"/>
+  <policy domain="coder" rights="none" pattern="EPS"/>
+  <policy domain="coder" rights="none" pattern="PDF"/>
+  <policy domain="coder" rights="none" pattern="XPS"/>
+
+  <!-- Vectors rasterise through a delegate. Allow SVG only if you need it. -->
+  <policy domain="coder" rights="none" pattern="SVG"/>
+
+  <!-- No shelling out at all. -->
+  <policy domain="delegate" rights="none" pattern="*"/>
+
+  <!-- No reading or writing anywhere but where the application says. -->
+  <policy domain="path" rights="none" pattern="@*"/>
+
+  <!--
+    50 megapixels at 16 bytes each is 800 MB of pixels, and a pipeline holds
+    about three copies. Match these to Limits::$maxPixels, or Limits is a
+    ceiling on paper and this is the one that fires.
+  -->
+  <policy domain="resource" name="width" value="32KP"/>
+  <policy domain="resource" name="height" value="32KP"/>
+  <policy domain="resource" name="area" value="2.4GB"/>
+  <policy domain="resource" name="memory" value="2.4GB"/>
+  <policy domain="resource" name="map" value="4.8GB"/>
+  <policy domain="resource" name="disk" value="1GiB"/>
+  <policy domain="resource" name="list-length" value="512"/>
+  <policy domain="resource" name="time" value="60"/>
+  <policy domain="resource" name="thread" value="2"/>
+
+  <!-- Somewhere the web server can actually write, and that is not shared. -->
+  <policy domain="resource" name="temporary-path" value="/tmp"/>
+
+  <!-- Nothing below this line may be relaxed by an included policy. -->
+  <policy domain="system" name="shred" value="1"/>
+  <policy domain="cache" name="memory-map" value="anonymous"/>
+</policymap>

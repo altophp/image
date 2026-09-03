@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cs:
+    uses: altophp/.github/.github/workflows/CS.yml@main
+    with:
+      php-version: '8.3'
+      composer-validate: true
+      php-cs-fixer-args: '--diff --dry-run --sequential'
+
+  sa:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, imagick
+          coverage: none
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: vendor/bin/phpstan analyse --memory-limit=-1 --no-progress
+
+  bare:
+    name: No image extension at all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          # Subtract rather than enumerate: transitive development dependencies
+          # may need extensions unrelated to image processing.
+          extensions: :gd, :imagick
+          coverage: none
+
+      - name: Check there is really no image extension
+        run: |
+          php -r 'echo implode(" ", get_loaded_extensions()), PHP_EOL;'
+          php -r 'if (extension_loaded("gd") || extension_loaded("imagick")) { fwrite(STDERR, "gd or imagick is loaded: this job proves nothing\n"); exit(1); }'
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: vendor/bin/phpunit tests/Unit
+      - run: php bin/image doctor
+
+  tests:
+    name: "PHP ${{ matrix.php }} ${{ matrix.drivers }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.3'
+            drivers: 'gd'
+            extensions: 'gd'
+          - php: '8.4'
+            drivers: 'gd'
+            extensions: 'gd'
+          - php: '8.4'
+            drivers: 'imagick'
+            extensions: 'imagick'
+          - php: '8.4'
+            drivers: 'both'
+            extensions: 'gd, imagick'
+          - php: '8.5'
+            drivers: 'both'
+            extensions: 'gd, imagick'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: ${{ matrix.extensions }}
+          coverage: none
+          ini-values: memory_limit=512M
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      # Both drivers separately as well as together, because a driver that only
+      # passes when the other is installed is a driver that is not being tested.
+      - run: vendor/bin/phpunit
+      - run: php bin/image doctor
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, imagick
+          coverage: pcov
+          tools: composer
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer coverage
