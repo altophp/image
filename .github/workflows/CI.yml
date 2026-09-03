@@ -94,9 +94,15 @@ jobs:
 
       - run: composer install --no-interaction --prefer-dist --no-progress
 
-      # Both drivers separately as well as together, because a driver that only
-      # passes when the other is installed is a driver that is not being tested.
-      - run: vendor/bin/phpunit
+      # Corpus builds its deterministic fixtures with GD. The isolated Imagick
+      # job therefore runs the extension-independent unit suite; the jobs with
+      # GD run the complete conformance corpus.
+      - if: matrix.drivers == 'imagick'
+        run: vendor/bin/phpunit tests/Unit
+
+      - if: matrix.drivers != 'imagick'
+        run: vendor/bin/phpunit
+
       - run: php bin/image doctor
 
   coverage:
