@@ -35,4 +35,14 @@ $percentage = 100 * $covered / $total;
 
 printf("Line coverage: %.2f%% (%d/%d), required: %.2f%%\n", $percentage, $covered, $total, $minimum);
 
+if ($percentage < $minimum && false !== $report) {
+    foreach ($report->xpath('//file') ?: [] as $file) {
+        foreach ($file->line as $line) {
+            if ('stmt' === (string) $line['type'] && 0 === (int) $line['count']) {
+                printf("Uncovered: %s:%d\n", (string) $file['name'], (int) $line['num']);
+            }
+        }
+    }
+}
+
 exit($percentage >= $minimum ? 0 : 1);
