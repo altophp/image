@@ -16,6 +16,8 @@ namespace Alto\Image\Tests\Unit;
 use Alto\Image\Driver\Capabilities;
 use Alto\Image\Driver\DriverInterface;
 use Alto\Image\Driver\Encoding;
+use Alto\Image\Driver\Gd\GdDriver;
+use Alto\Image\Driver\Imagick\ImagickDriver;
 use Alto\Image\Driver\Output;
 use Alto\Image\Driver\Plan;
 use Alto\Image\Driver\Support;
@@ -32,7 +34,6 @@ use Alto\Image\Operation\Resize;
 use Alto\Image\Operation\Rotate;
 use Alto\Image\Result;
 use Alto\Image\Source;
-use Alto\Image\Test\Corpus;
 use Alto\Image\Transform;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -51,7 +52,10 @@ final class PlanTest extends TestCase
         self::assertSame([], $plan->operations(0));
         self::assertTrue($plan->isPassThrough(0));
         self::assertCount(2, Plan::known());
-        self::assertNotSame([], Plan::installed());
+        self::assertCount(
+            (ImagickDriver::isAvailable() ? 1 : 0) + (GdDriver::isAvailable() ? 1 : 0),
+            Plan::installed(),
+        );
     }
 
     public function testAPlanNeedsAnOutputAndChecksIndexes(): void
@@ -163,12 +167,23 @@ final class PlanTest extends TestCase
     public function testPassThroughBakesAStoredExifOrientationIntoPixels(): void
     {
         $plan = Plan::negotiate(
-            Source::file(Corpus::shared()->path('orientation/6.jpg')),
+            Source::bytes($this->jpegWithOrientation(6), 'oriented fixture'),
             [Output::new()->with(encoding: new Encoding(metadata: MetadataPolicy::Keep))],
             candidates: [new NegotiationDriver()],
         );
 
         self::assertFalse($plan->isPassThrough(0));
+    }
+
+    private function jpegWithOrientation(int $orientation): string
+    {
+        $tiff = "MM\x00\x2A\x00\x00\x00\x08\x00\x01"
+            . "\x01\x12\x00\x03\x00\x00\x00\x01" . pack('n', $orientation) . "\x00\x00"
+            . "\x00\x00\x00\x00";
+        $exif = "Exif\x00\x00" . $tiff;
+        $sof = "\xFF\xC0" . pack('nCnnC', 11, 8, 10, 10, 1) . "\x01\x11\x00";
+
+        return "\xFF\xD8\xFF\xE1" . pack('n', \strlen($exif) + 2) . $exif . $sof . "\xFF\xD9";
     }
 
     private function png(): Source

@@ -26,7 +26,7 @@ jobs:
     name: Static Analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -41,7 +41,7 @@ jobs:
     name: No image extension at all
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -69,13 +69,13 @@ jobs:
         include:
           - php: '8.3'
             drivers: 'gd'
-            extensions: 'gd'
+            extensions: 'gd, :imagick'
           - php: '8.4'
             drivers: 'gd'
-            extensions: 'gd'
+            extensions: 'gd, :imagick'
           - php: '8.4'
             drivers: 'imagick'
-            extensions: 'imagick'
+            extensions: 'imagick, :gd'
           - php: '8.4'
             drivers: 'both'
             extensions: 'gd, imagick'
@@ -83,7 +83,7 @@ jobs:
             drivers: 'both'
             extensions: 'gd, imagick'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -103,7 +103,7 @@ jobs:
     name: Coverage
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: shivammathur/setup-php@v2
         with:

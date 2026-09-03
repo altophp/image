@@ -67,7 +67,12 @@ final class ImagickDriverTest extends TestCase
         $driver = new ImagickDriver();
 
         self::assertSame(Support::Approximate, $driver->canEncode(new Encoding(Format::Jpeg, effort: Effort::Best)));
-        self::assertSame(Support::Approximate, $driver->canEncode(new Encoding(Format::Avif, effort: Effort::Fast)));
+
+        $avif = $driver->canEncode(new Encoding(Format::Avif));
+        self::assertSame(
+            Support::No === $avif ? Support::No : Support::Approximate,
+            $driver->canEncode(new Encoding(Format::Avif, effort: Effort::Fast)),
+        );
     }
 
     public function testPlacementConformAndNoopOperationsAreExplicit(): void

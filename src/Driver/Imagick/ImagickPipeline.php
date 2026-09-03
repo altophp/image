@@ -420,7 +420,8 @@ final class ImagickPipeline
         }
 
         if (1.0 !== $operation->opacity) {
-            $mark->setImageAlpha($operation->opacity);
+            $mark->setImageAlphaChannel(\Imagick::ALPHACHANNEL_ACTIVATE);
+            $mark->evaluateImage(\Imagick::EVALUATE_MULTIPLY, $operation->opacity, \Imagick::CHANNEL_ALPHA);
         }
 
         $inner = new Size($mark->getImageWidth(), $mark->getImageHeight());
