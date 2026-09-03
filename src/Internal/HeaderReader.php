@@ -88,9 +88,12 @@ final class HeaderReader
 
         // getimagesize() reports `width="10em"` as ten pixels and exposes the unit
         // separately. Without a font, the viewBox is the authoritative geometry.
+        // Whether PHP recognises SVG here depends on how it was built.
+        // @codeCoverageIgnoreStart
         if (Format::Svg === $format) {
             return null;
         }
+        // @codeCoverageIgnoreEnd
 
         return new Metadata(
             new Size($info[0], $info[1]),
