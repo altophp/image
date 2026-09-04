@@ -99,7 +99,7 @@ final class CrossDriverEquivalenceTest extends TestCase
         $parsed = Transform::parse($transform);
         $checked = 0;
 
-        foreach (['photo.png', 'bordered.png', 'portrait.jpg'] as $fixture) {
+        foreach (['photo.png', 'bordered.png', 'portrait.jpg', 'unaligned.jpg'] as $fixture) {
             $path = self::corpus()->path($fixture);
 
             $left = $this->render($gd, $path, $parsed);
@@ -115,7 +115,7 @@ final class CrossDriverEquivalenceTest extends TestCase
             ++$checked;
         }
 
-        self::assertSame(3, $checked);
+        self::assertSame(4, $checked);
     }
 
     /**

@@ -36,17 +36,24 @@ final class ShrinkOnLoad
     private const int RUNGS = 8;
 
     /**
-     * The smallest decode that still covers every output.
+     * The smallest decode that still covers every output and projects the same.
      *
      * ImageMagick rounds jpeg:size to the nearest eighth and may decode below the
      * requested size. Select the smallest rung whose floored dimensions still
      * cover every output.
      *
-     * @param list<Placement> $placements the first geometry step of every output
+     * Covering the geometry is not enough on its own. The pipeline solves every
+     * step against the raster it is handed, so an aspect-preserving resize
+     * solved against a 141x170 decode of a 563x678 source rounds to 100x121
+     * where the projection said 100x120. A rung that moves a promised size is
+     * not a cheaper decode of the same picture, so keep climbing.
+     *
+     * @param list<Placement>     $placements        the first geometry step of every output
+     * @param \Closure(Size): bool $preservesGeometry whether a decode at that size still projects to every promised output
      *
      * @return string|null the jpeg:size hint, or null when there is nothing to gain
      */
-    public static function hint(Metadata $source, array $placements): ?string
+    public static function hint(Metadata $source, array $placements, \Closure $preservesGeometry): ?string
     {
         if (Format::Jpeg !== $source->format || [] === $placements) {
             return null;
@@ -63,13 +70,14 @@ final class ShrinkOnLoad
         for ($rung = 1; $rung < self::RUNGS; ++$rung) {
             $decoded = self::at($source->size, $rung);
 
-            if ($decoded->width >= $width && $decoded->height >= $height) {
+            if ($decoded->width >= $width && $decoded->height >= $height && $preservesGeometry($decoded)) {
                 return $decoded->width . 'x' . $decoded->height;
             }
         }
 
-        // Every rung below the full decode is too small, so there is nothing to
-        // gain and the option would only be noise in a stack trace.
+        // Every rung below the full decode is too small or rounds the projection
+        // somewhere else, so there is nothing to gain and the option would only
+        // be noise in a stack trace.
         return null;
     }
 
