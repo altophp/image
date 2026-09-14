@@ -22,7 +22,7 @@ use Alto\Image\Exception\StoreException;
  */
 final class Corpus
 {
-    private const string VERSION = 'v1';
+    private const string VERSION = 'v2';
 
     /**
      * The eight EXIF orientations. Every one of them must display identically.
@@ -91,6 +91,7 @@ final class Corpus
             'alpha' => $this->path('alpha.png'),
             'bordered' => $this->path('bordered.png'),
             'portrait' => $this->path('portrait.jpg'),
+            'unaligned jpeg' => $this->path('unaligned.jpg'),
             'one pixel' => $this->path('one-pixel.png'),
         ];
     }
@@ -141,6 +142,12 @@ final class Corpus
 
         $portrait = $this->paint(400, 600);
         imagejpeg($portrait, $this->directory . '/portrait.jpg', 92);
+
+        // Neither axis is a multiple of the eight-pixel DCT block, so no JPEG
+        // decode rung is a proportional shrink of it and a driver that resizes
+        // from one has to prove it still lands on the projected size.
+        $unaligned = $this->paint(563, 678);
+        imagejpeg($unaligned, $this->directory . '/unaligned.jpg', 92);
 
         $pixel = imagecreatetruecolor(1, 1);
         imagesetpixel($pixel, 0, 0, (int) imagecolorallocate($pixel, 230, 57, 70));

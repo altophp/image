@@ -265,7 +265,11 @@ final class ImagickDriver implements DriverInterface
         ResourcePolicy::apply($plan->limits);
 
         $placements = $this->firstPlacements($plan);
-        $hint = ShrinkOnLoad::hint($plan->input, $placements);
+        $hint = ShrinkOnLoad::hint(
+            $plan->input,
+            $placements,
+            fn(Size $decoded): bool => $this->preservesGeometry($plan, $decoded),
+        );
         $image = $this->read($plan, $hint);
 
         // Trust nothing about a decoder's idea of "about this size". If the rung
@@ -386,6 +390,30 @@ final class ImagickDriver implements DriverInterface
         }
 
         return false;
+    }
+
+    /**
+     * Whether a decode at this size still lands on every size the plan promised.
+     *
+     * The pipeline solves each geometry step against the raster it is handed, so
+     * a shrunk decode has to round the way the projection did. Re-projecting the
+     * transform from the smaller source is the same arithmetic the plan ran, so
+     * it answers with the size that decode would actually produce.
+     */
+    private function preservesGeometry(Plan $plan, Size $decoded): bool
+    {
+        $shrunk = $plan->input->with(size: $decoded);
+
+        foreach (array_keys($plan->requests) as $index) {
+            $spec = $plan->requests[$index];
+
+            // An unmeasurable output promised nothing, so no rounding betrays it.
+            if ($spec->transform->isMeasurable() && !$spec->estimate($shrunk)->size->equals($plan->outputs[$index]->size)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

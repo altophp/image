@@ -30,13 +30,33 @@ final class ShrinkOnLoadTest extends SourceClassTestCase
     {
         $source = new Metadata(new Size(4000, 3000), Format::Jpeg);
 
-        self::assertSame('1000x750', ShrinkOnLoad::hint($source, [Placement::scale(new Size(1000, 750))]));
+        self::assertSame('1000x750', ShrinkOnLoad::hint($source, [Placement::scale(new Size(1000, 750))], self::anyRung()));
         self::assertEquals(new Size(501, 376), ShrinkOnLoad::at(new Size(4001, 3001), 1));
+    }
+
+    public function testClimbsPastARungThatMovesAPromisedSize(): void
+    {
+        $source = new Metadata(new Size(563, 678), Format::Jpeg);
+        $placements = [Placement::scale(new Size(100, 120))];
+
+        // 141x170 is the smallest rung that covers the output, and it is also the
+        // rung an aspect-preserving resize rounds to 100x121 on.
+        self::assertSame('141x170', ShrinkOnLoad::hint($source, $placements, self::anyRung()));
+        self::assertSame('212x255', ShrinkOnLoad::hint($source, $placements, static fn(Size $decoded): bool => 141 !== $decoded->width));
+        self::assertNull(ShrinkOnLoad::hint($source, $placements, static fn(): bool => false));
     }
 
     public function testSkipsUnsupportedOrFullSizeHints(): void
     {
-        self::assertNull(ShrinkOnLoad::hint(new Metadata(new Size(4000, 3000), Format::Png), [Placement::scale(new Size(1000, 750))]));
-        self::assertNull(ShrinkOnLoad::hint(new Metadata(new Size(4000, 3000), Format::Jpeg), [Placement::scale(new Size(4000, 3000))]));
+        self::assertNull(ShrinkOnLoad::hint(new Metadata(new Size(4000, 3000), Format::Png), [Placement::scale(new Size(1000, 750))], self::anyRung()));
+        self::assertNull(ShrinkOnLoad::hint(new Metadata(new Size(4000, 3000), Format::Jpeg), [Placement::scale(new Size(4000, 3000))], self::anyRung()));
+    }
+
+    /**
+     * @return \Closure(Size): bool a plan every rung projects the same way
+     */
+    private static function anyRung(): \Closure
+    {
+        return static fn(): bool => true;
     }
 }
