@@ -1,62 +1,42 @@
-# ALTO Image documentation
+# ALTO Image
 
-ALTO Image provides immutable image requests, predictable geometry, and shared
-decoding for multiple outputs. Start with the common workflow, then use the
-task guides or API reference as needed.
+ALTO Image builds immutable image requests with predictable output geometry.
+It can inspect and plan work before decoding pixels, then render several
+derivatives from one source decode with GD or Imagick.
 
-## Start here
+```php
+use Alto\Image\Image;
 
-- [Installation](installation.md)
-- [Getting started](getting-started.md)
+$result = Image::open('photo.jpg')
+    ->cover(800, 450)
+    ->webp(80)
+    ->save('hero.webp');
+```
 
-## Guides
+The source remains unchanged and the saved result measures 800 by 450 pixels.
+Start with the complete first workflow, then choose pages by task.
 
-- [Encoding](encoding.md)
-- [Image sets](image-sets.md)
-- [Storage](storage.md)
-- [Metadata](metadata-and-safety.md)
-- [Image analysis](analysis.md)
-- [Command line](command-line.md)
+![An 800 by 450 cover generated from the tutorial source](assets/examples/first-cover.webp)
 
-## Operations
+## Documentation
 
-- [Overview](transformations.md)
-- [Cover](operations/cover.md)
-- [Contain](operations/contain.md)
-- [Fit](operations/fit.md)
-- [Scale](operations/scale.md)
-- [Stretch](operations/stretch.md)
-- [Resize](operations/resize.md)
-- [Crop](operations/crop.md)
-- [Extend](operations/extend.md)
-- [Trim](operations/trim.md)
-- [Rotate](operations/rotate.md)
-- [Flip](operations/flip.md)
-- [Orient](operations/orient.md)
-- [Flatten](operations/flatten.md)
-- [Overlay](operations/overlay.md)
-- [Blur](operations/blur.md)
-- [Sharpen](operations/sharpen.md)
-- [Adjust](operations/adjust.md)
-- [Grayscale](operations/grayscale.md)
-- [Invert](operations/invert.md)
-- [Pixelate](operations/pixelate.md)
-- [Tint](operations/tint.md)
-- [Colour profile](operations/convert-colour-profile.md)
+- [Installation](installation.md): install the package and inspect available drivers.
+- [Getting started](getting-started.md): create and verify a first image derivative.
+- [Formats](formats.md): understand known formats and runtime read and write support.
+- [Transform](transform.md): resize, crop, compose, and adjust pixels.
+- [Encoding](encoding.md): select output formats and compression settings.
+- [Image sets](image-sets.md): render several outputs from one source decode.
+- [Storage](storage.md): save, cache, and reuse image derivatives.
+- [Safety](safety.md): control metadata, resources, and untrusted input.
+- [Analysis](analysis.md): extract colours and compare images perceptually.
+- [Drivers](drivers.md): choose GD, Imagick, or a third-party implementation.
+- [CLI](cli.md): inspect and convert images from the command line.
+- [Errors](errors.md): handle package failures at application boundaries.
 
-## Drivers
+## Boundaries
 
-- [Drivers](drivers/index.md)
-- [GD](drivers/gd.md)
-- [Imagick](drivers/imagick.md)
-- [Writing a driver](drivers/writing-a-driver.md)
-
-## Reference
-
-- [Public API](api/index.md)
-- [Core API](api/core.md)
-- [Extension contracts](api/extension-contracts.md)
-- [Exceptions](api/exceptions.md)
-
-See the [security policy](../SECURITY.md) for deployment boundaries and
-[contributing](../CONTRIBUTING.md) for development requirements.
+Available formats and exact behavior depend on the selected driver and its
+compiled delegates. Animated inputs are reduced to their first frame. GD does
+not preserve metadata; Imagick support depends on its build. Run
+`vendor/bin/image doctor` on each deployment target before relying on a format
+or optional capability.

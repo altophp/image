@@ -27,7 +27,7 @@ vendor/bin/image doctor
 ```
 
 Format support depends on how the PHP extension was compiled. The doctor output
-is authoritative for the current machine. See [Drivers](drivers/index.md) for
+is authoritative for the current machine. See [Drivers](drivers.md) for
 the behavioral differences between GD and Imagick.
 
 ## Optional Flysystem support

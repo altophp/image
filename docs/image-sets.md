@@ -65,3 +65,7 @@ shape and writes each derivative to a signature-keyed store. `ImageSet` has no
 
 The one-decode guarantee applies to outputs rendered in the same batch. A store
 renders only its missing outputs together; existing derivatives are reused.
+
+`images()` returns the ordered member requests and `count()` returns their
+number. Iteration uses zero-based indexes. Like `Image`, every fluent change
+returns a new value and leaves the existing set unchanged.

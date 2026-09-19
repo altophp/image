@@ -1,74 +1,65 @@
 # Getting started
 
-Create and inspect a first derivative without configuring a driver or service.
+Create an 800 by 450 WebP cover from a supplied image. Follow
+[Installation](installation.md) first and run `vendor/bin/image doctor` to check
+that GD or Imagick can read PNG and write WebP.
 
-## Create one image
+Download the [example source](https://raw.githubusercontent.com/altophp/image/main/docs/assets/examples/first-source.png) into your project
+as `source.png`. This original ALTO documentation illustration is 1200 by 800
+pixels and is distributed under the repository's MIT license.
 
-Open a source, describe the output, then save it:
+Save this as `thumbnail.php` beside `vendor/`:
 
 ```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
 use Alto\Image\Image;
 
-$result = Image::open('photo.jpg')
+$output = __DIR__.'/public';
+if (!is_dir($output)) {
+    mkdir($output, 0775, true);
+}
+
+$result = Image::open(__DIR__.'/source.png')
     ->cover(800, 450)
     ->webp(80)
-    ->save('public/hero.webp');
+    ->save($output.'/hero.webp');
+
+printf("%d x %d %s\n", $result->size()->width, $result->size()->height, $result->format()->value);
 ```
 
-The request is immutable and lazy. It does not decode the source until
-`save()`, `store()`, `render()`, `bytes()`, `dataUri()`, or `analyze()` is
-called.
+Run `php thumbnail.php`. It writes `public/hero.webp` and prints:
 
-Source dimensions use the EXIF display orientation. Rendering applies that
-orientation automatically.
-
-The output path does not select the format. Call `webp()`, `jpeg()`, `png()`,
-`avif()`, or `encode()` explicitly before saving to a differently named format.
-
-## Inspect a request
-
-Inspection reads the source header and projects the requested result without
-decoding pixels:
-
-```php
-$image = Image::open('photo.jpg')
-    ->fit(1600, 1600)
-    ->webp();
-
-$sourceSize = $image->sourceSize();
-$outputSize = $image->size();
-$metadata = $image->metadata();
-$cacheKey = $image->signature();
+```text
+800 x 450 webp
 ```
 
-An operation that cannot project its output throws `UnmeasurableException` for
-`size()` and `metadata()`. Rendering may still be possible.
+| Source: 1200 x 800 | Cover: 800 x 450 |
+| --- | --- |
+| ![Original landscape illustration with sky, hills, and a sun](assets/examples/first-source.png) | ![Actual WebP cover, cropped vertically to a 16:9 frame](assets/examples/first-cover.webp) |
 
-## Read the result
+`cover()` fills the requested box and crops the excess. The source remains
+unchanged. The default avoids enlargement, so use a sufficiently large source
+when reproducing these exact dimensions. See [Cover](transform/cover.md) for
+scaling and crop placement.
 
-Terminals return a `Result` with the encoded bytes and what the driver actually
-produced:
+## Understand the result
 
-```php
-$result = $image->render();
+The request is immutable and lazy: pixel decoding happens at `save()` here.
+The `.webp` filename does not select the format; the explicit `webp(80)` call
+does. ALTO applies the source's display orientation when rendering.
 
-$result->bytes;
-$result->size();
-$result->format();
-$result->length();
-$result->driver;
-$result->duration;
-$result->degradations;
-$result->isExact();
-```
+The returned `Result` contains encoded bytes, actual dimensions and format,
+driver, duration, and any `degradations`. A degradation means the chosen driver
+approximated part of the request; see [driver capabilities](drivers.md).
+Encoded sizes and pixels can vary between driver versions.
 
-`degradations` explains any behavior the selected driver could only approximate.
-See [Driver selection and features](drivers/index.md) for capability details.
+## Continue
 
-## Next steps
-
-- [Transform an image](transformations.md)
-- [Configure encoding](encoding.md)
-- [Create several outputs](image-sets.md)
-- [Cache derivatives in a store](storage.md)
-- [Configure metadata and limits](metadata-and-safety.md)
+- [Choose an operation](transform.md) for cropping, padding, or preserving the full image.
+- [Inspect dimensions and metadata](safety.md) before rendering.
+- [Configure encoding](encoding.md) for quality and format options.
+- [Produce several outputs](image-sets.md) while sharing decoded pixels.
+- [Save or cache derivatives](storage.md), including write-failure handling.

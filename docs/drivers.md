@@ -19,8 +19,8 @@ current machine.
 
 ## Built-in drivers
 
-- [GD](gd.md)
-- [Imagick](imagick.md)
+- [GD](drivers/gd.md)
+- [Imagick](drivers/imagick.md)
 
 | Feature | GD | Imagick |
 | --- | --- | --- |
@@ -50,4 +50,13 @@ Negotiation fails before decoding when no driver can perform the request.
 ## Third-party drivers
 
 Implement `DriverInterface` and verify it with the public conformance toolkit.
-See [Writing a driver](writing-a-driver.md).
+See [Writing a driver](drivers/writing-a-driver.md).
+
+The driver contract reports a name, build capabilities, support for each
+operation, decode support for a source format, encode support for an output
+request, and processes one negotiated `Plan`. `Capabilities` exposes the exact
+read and write formats plus diagnostic notes for the installed build.
+
+The supported testing namespace contains `ArrayDriver`, `Corpus`,
+`DriverTestCase`, and `ImageAssertions`. Extend `DriverTestCase` to apply the
+same behavioral contract used by the built-in drivers.
