@@ -1,4 +1,4 @@
-# Exceptions
+# Image errors
 
 Every package exception implements `ImageExceptionInterface`. Catch the marker
 interface at an application boundary, or a concrete exception when recovery

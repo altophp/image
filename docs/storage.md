@@ -75,5 +75,22 @@ $results = $set->store($store);
 stores use adapter writes rather than local atomic rename. Files are written
 with public visibility and the encoded MIME type.
 
-Custom backends implement `StoreInterface`. See
-[Extension contracts](api/extension-contracts.md).
+Custom backends implement `StoreInterface`. The contract covers deterministic
+path lookup, existence checks, writing one or several outputs, and pruning.
+The built-in implementations are `LocalStore` and `FlysystemStore`.
+
+## When saving fails
+
+Check that the destination's parent can be created and written by the PHP
+process. Local writes need space for a temporary file and an atomic rename;
+a read-only directory or an existing directory at the file path cannot be a
+valid destination. Check storage permissions and free space before retrying.
+For remote stores, check adapter credentials and write permissions separately
+from image decoding. See [exception contracts](errors.md).
+
+## Read the result
+
+A `Result` contains the encoded bytes, actual metadata, driver name,
+degradations, duration, saved path, and whether existing bytes were copied.
+Use `size()`, `format()`, `length()`, `isExact()`, and `dataUri()` for common
+reads. A degradation records a driver approximation; it is not a failed write.

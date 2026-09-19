@@ -26,8 +26,8 @@ no image extension. Rendering uses GD or Imagick.
   include quality, effort, byte limits, progressive output and lossless output.
 - Extract dominant colours and compare images with perceptual hashes.
 
-See [crop](docs/operations/crop.md),
-[colour profile conversion](docs/operations/convert-colour-profile.md),
+See [crop](docs/transform/crop.md),
+[colour profile conversion](docs/transform/colour-profile.md),
 [encoding](docs/encoding.md) and [analysis](docs/analysis.md).
 
 ## Installation
@@ -67,12 +67,12 @@ Composer installs `vendor/bin/image` with three subcommands:
 
 | Command | Purpose |
 | --- | --- |
-| [`image doctor`](docs/command-line.md#doctor) | Inspect installed drivers and formats |
-| [`image info`](docs/command-line.md#info) | Read image headers without decoding |
-| [`image convert`](docs/command-line.md#convert) | Transform and write one image |
+| [`image doctor`](docs/cli.md#doctor) | Inspect installed drivers and formats |
+| [`image info`](docs/cli.md#info) | Read image headers without decoding |
+| [`image convert`](docs/cli.md#convert) | Transform and write one image |
 
 Run them through `vendor/bin/image`. See the
-[command-line reference](docs/command-line.md) for arguments, examples and exit
+[command-line reference](docs/cli.md) for arguments, examples and exit
 codes.
 
 ## Multiple outputs
@@ -189,16 +189,18 @@ $transform = Transform::parse(
 ## Documentation
 
 - [Documentation index](docs/index.md)
+- [Installation](docs/installation.md)
 - [Getting started](docs/getting-started.md)
-- [Transformations](docs/transformations.md)
-- [Image sets](docs/image-sets.md)
+- [Image formats](docs/formats.md)
+- [Transform images](docs/transform.md)
 - [Encoding](docs/encoding.md)
-- [Analysis](docs/analysis.md)
+- [Image sets](docs/image-sets.md)
 - [Storage](docs/storage.md)
-- [Metadata and safety](docs/metadata-and-safety.md)
-- [Command line](docs/command-line.md)
-- [Public API](docs/api/index.md)
-- [Drivers](docs/drivers/index.md)
+- [Image safety](docs/safety.md)
+- [Image analysis](docs/analysis.md)
+- [Drivers](docs/drivers.md)
+- [Command line](docs/cli.md)
+- [Image errors](docs/errors.md)
 
 ## Contributing
 

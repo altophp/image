@@ -45,3 +45,8 @@ packed pixels, RGBA channels, luma values, and bounded resampling.
 
 Analyzers are suited to compact visual features. Use a dedicated processing
 pipeline when an algorithm requires full-resolution pixels.
+
+`AnalyzerInterface<TResult>` receives the bounded `Raster` and returns its
+application-defined result. The public raster exposes packed pixels, RGBA
+channels, luma values, and bounded resampling; it does not expose a native GD or
+Imagick handle.

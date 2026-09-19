@@ -1,4 +1,4 @@
-# Metadata and safety
+# Image safety
 
 ALTO Image applies source limits before decoding and strips metadata by default.
 Keep the defaults for untrusted uploads unless the application has a specific
@@ -80,3 +80,14 @@ $transform = Transform::parse(
 
 See the [security policy](../SECURITY.md) for supported versions, reporting, and the
 full deployment boundary.
+
+## Sources
+
+`Image::open()` accepts a path or `Source`. Create a source explicitly with
+`Source::file()`, `Source::bytes()`, or `Source::stream()`. `Source::of()` accepts
+an existing source or path. Use `identifiedBy()` only when application storage
+already provides a stable version identifier for cache signatures.
+
+Header reads such as `metadata()`, `head()`, `tail()`, and `length()` do not
+request a full pixel decode. `contents()` reads the complete source. Resolve
+paths and enforce finite `Limits` before allowing a terminal image operation.

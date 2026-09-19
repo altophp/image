@@ -21,7 +21,7 @@ $ vendor/bin/image doctor
 ```
 
 Format support depends on the installed GD and ImageMagick builds. See
-[Drivers](drivers/index.md) for the selection rules and driver limits.
+[Drivers](drivers.md) for the selection rules and driver limits.
 
 ## `info`
 
@@ -50,7 +50,7 @@ $ vendor/bin/image convert photo.jpg hero.webp "cover=1280x720,g:attention|sharp
 ```
 
 The command reports the source, projected dimensions, selected driver, written
-file and any degradation. See [Operations](transformations.md) for transform
+file and any degradation. See [Transform](transform.md) for transform
 syntax and [Encoding](encoding.md) for output formats.
 
 ## Exit codes
@@ -60,3 +60,9 @@ syntax and [Encoding](encoding.md) for output formats.
 | `0` | Success |
 | `1` | Image processing failed |
 | `2` | Unknown command or missing required argument |
+
+For exit code 1, read the reported processing error, check the source path,
+run `doctor` for driver capabilities, and confirm the destination is writable.
+For exit code 2, compare the arguments with the command syntax above before
+retrying. A supported filename extension alone does not establish that the
+installed driver can encode that format.

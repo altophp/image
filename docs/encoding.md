@@ -33,5 +33,12 @@ $image = Image::open('photo.png')->encode(
 ```
 
 A byte limit can require several encoding passes. Format support depends on the
-selected [driver](drivers/index.md). Use `encode()` with another `Format` case
+selected [driver](drivers.md). Use `encode()` with another `Format` case
 when the driver reports it as writable through `vendor/bin/image doctor`.
+
+The complete encoding request includes the format, quality, effort, metadata
+policy, byte limit, progressive mode, lossless mode, and driver-specific
+options. The request remains immutable when one of these settings changes.
+
+Read [Formats](formats.md) before treating a filename extension as evidence
+that a deployment can write that format.
