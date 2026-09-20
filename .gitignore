@@ -5,5 +5,3 @@
 /.php-cs-fixer.cache
 /coverage/
 /coverage.xml
-/clover.xml
-.DS_Store

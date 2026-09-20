@@ -78,8 +78,8 @@ $transform = Transform::parse(
 - Keep finite limits in place before any terminal operation.
 - Treat `escape()` closures as trusted application code.
 
-See the [security policy](../SECURITY.md) for supported versions, reporting, and the
-full deployment boundary.
+Report suspected vulnerabilities through the
+[organization security policy](https://github.com/altophp/.github/blob/main/.github/SECURITY.md).
 
 ## Sources
 
