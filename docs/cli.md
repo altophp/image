@@ -51,7 +51,7 @@ $ vendor/bin/image convert photo.jpg hero.webp "cover=1280x720,g:attention|sharp
 
 The command reports the source, projected dimensions, selected driver, written
 file and any degradation. See [Transform](transform.md) for transform
-syntax and [Encoding](encoding.md) for output formats.
+syntax and [encoding](formats.md#encode-output) for output formats.
 
 ## Exit codes
 
