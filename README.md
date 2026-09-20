@@ -28,7 +28,7 @@ no image extension. Rendering uses GD or Imagick.
 
 See [crop](docs/transform/crop.md),
 [colour profile conversion](docs/transform/colour-profile.md),
-[encoding](docs/encoding.md) and [analysis](docs/analysis.md).
+[encoding](docs/formats.md#encode-output) and [analysis](docs/analysis.md).
 
 ## Installation
 
@@ -173,8 +173,8 @@ Image::open($upload)
     ->save($destination);
 ```
 
-Read [SECURITY.md](SECURITY.md) before processing untrusted paths or transform
-strings. Limit user-supplied transformations to the operations the endpoint
+Read the [image safety guide](docs/safety.md) before processing untrusted paths or
+transform strings. Limit user-supplied transformations to the operations the endpoint
 needs:
 
 ```php
@@ -193,7 +193,6 @@ $transform = Transform::parse(
 - [Getting started](docs/getting-started.md)
 - [Image formats](docs/formats.md)
 - [Transform images](docs/transform.md)
-- [Encoding](docs/encoding.md)
 - [Image sets](docs/image-sets.md)
 - [Storage](docs/storage.md)
 - [Image safety](docs/safety.md)
@@ -215,22 +214,24 @@ Before submitting code, run:
 ```bash
 # Runs PHP CS Fixer, PHPStan, and PHPUnit
 composer qa
-
-# Runs PHPUnit and enforces 100% line coverage
-composer coverage
 ```
 
-Changes to public behavior should include tests and documentation. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for package-specific guidance.
+Changes to public behavior should include tests and documentation.
+
+Run `composer coverage` separately to enforce the 100% line-coverage floor.
+Portable operations must remain independent of GD and Imagick: unit tests run
+without either extension, driver behavior belongs in `tests/Driver/`, and
+malformed input belongs in `tests/Fuzz/`.
 
 ## Support
 
-ALTO Image is open source. You can support its continued development through
+ALTO Image is open source and independently maintained by
+[Simon André](https://smnandre.dev). If it is useful to your work, you can
+support its continued development through
 [GitHub Sponsors](https://github.com/sponsors/smnandre).
 
-Sharing this package with others or
-[starring it on GitHub](https://github.com/altophp/image) is also much
-appreciated.
+Sharing the package or
+[starring it on GitHub](https://github.com/altophp/image) also helps.
 
 ## License
 
