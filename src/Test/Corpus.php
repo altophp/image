@@ -22,7 +22,7 @@ use Alto\Image\Exception\StoreException;
  */
 final class Corpus
 {
-    private const string VERSION = 'v2';
+    private const string VERSION = 'v3';
 
     /**
      * The eight EXIF orientations. Every one of them must display identically.
@@ -60,6 +60,7 @@ final class Corpus
         $this->writeFlat();
         $this->writeAlpha();
         $this->writeBordered();
+        $this->writeAwkwardPngs();
         $this->writeOrientations();
         $this->writeAnimation();
         $this->writeMalformed();
@@ -93,6 +94,10 @@ final class Corpus
             'portrait' => $this->path('portrait.jpg'),
             'unaligned jpeg' => $this->path('unaligned.jpg'),
             'one pixel' => $this->path('one-pixel.png'),
+            'png 16-bit truecolour' => $this->path('deep.png'),
+            'png 16-bit grey' => $this->path('deep-grey.png'),
+            'png palette' => $this->path('palette.png'),
+            'png palette with transparency' => $this->path('palette-trns.png'),
         ];
     }
 
@@ -216,6 +221,18 @@ final class Corpus
         imagefilledrectangle($image, 40, 30, 259, 169, (int) imagecolorallocate($image, 29, 53, 87));
         imagefilledellipse($image, 150, 100, 120, 80, (int) imagecolorallocate($image, 230, 57, 70));
         imagepng($image, $this->directory . '/bordered.png');
+    }
+
+    /**
+     * PNG variants that GD cannot generate itself.
+     */
+    private function writeAwkwardPngs(): void
+    {
+        file_put_contents($this->directory . '/deep.png', PngWriter::truecolour16(192, 192));
+        file_put_contents($this->directory . '/deep-grey.png', PngWriter::grey16(192, 192));
+        file_put_contents($this->directory . '/palette.png', PngWriter::palette(192, 192, false));
+        file_put_contents($this->directory . '/palette-trns.png', PngWriter::palette(192, 192, true));
+        file_put_contents($this->directory . '/interlaced.png', PngWriter::interlaced(192, 192));
     }
 
     /**

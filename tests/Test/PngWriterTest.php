@@ -15,20 +15,20 @@ namespace Alto\Image\Tests\Test;
 
 use Alto\Image\Format;
 use Alto\Image\Source;
-use Alto\Image\Test\Corpus;
+use Alto\Image\Test\PngWriter;
 use Alto\Image\Tests\Support\SourceClassTestCase;
 use PHPUnit\Framework\Attributes\CoversNothing;
 
 #[CoversNothing]
-final class CorpusTest extends SourceClassTestCase
+final class PngWriterTest extends SourceClassTestCase
 {
-    protected const string SUBJECT = Corpus::class;
+    protected const string SUBJECT = PngWriter::class;
 
-    public function testTheInterlacedFixtureHasReadableMetadata(): void
+    public function testItWritesASinglePixelInterlacedPng(): void
     {
-        $metadata = Source::file(Corpus::shared()->path('interlaced.png'))->metadata();
+        $metadata = Source::bytes(PngWriter::interlaced(1, 1))->metadata();
 
         self::assertSame(Format::Png, $metadata->format);
-        self::assertSame('192x192', (string) $metadata->size);
+        self::assertSame('1x1', (string) $metadata->size);
     }
 }
