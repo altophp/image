@@ -24,14 +24,12 @@ Start with the complete first workflow, then choose pages by task.
 - [Getting started](getting-started.md): create and verify a first image derivative.
 - [Formats](formats.md): understand known formats and runtime read and write support.
 - [Transform](transform.md): resize, crop, compose, and adjust pixels.
-- [Encoding](encoding.md): select output formats and compression settings.
 - [Image sets](image-sets.md): render several outputs from one source decode.
 - [Storage](storage.md): save, cache, and reuse image derivatives.
 - [Safety](safety.md): control metadata, resources, and untrusted input.
 - [Analysis](analysis.md): extract colours and compare images perceptually.
 - [Drivers](drivers.md): choose GD, Imagick, or a third-party implementation.
 - [CLI](cli.md): inspect and convert images from the command line.
-- [Errors](errors.md): handle package failures at application boundaries.
 
 ## Boundaries
 

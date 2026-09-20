@@ -60,6 +60,6 @@ Encoded sizes and pixels can vary between driver versions.
 
 - [Choose an operation](transform.md) for cropping, padding, or preserving the full image.
 - [Inspect dimensions and metadata](safety.md) before rendering.
-- [Configure encoding](encoding.md) for quality and format options.
+- [Configure encoding](formats.md#encode-output) for quality and format options.
 - [Produce several outputs](image-sets.md) while sharing decoded pixels.
 - [Save or cache derivatives](storage.md), including write-failure handling.
