@@ -57,6 +57,16 @@ final class HeaderReaderTest extends TestCase
         self::assertSame('cmyk', HeaderReader::read($this->jpegWithChannels(4), 'cmyk jpeg')->colourSpace);
     }
 
+    public function testItDetectsAnEmbeddedIccProfile(): void
+    {
+        $jpeg = $this->jpegWithChannels(3);
+        $profile = "ICC_PROFILE\x00\x01\x01profile bytes";
+        $app2 = "\xFF\xE2" . pack('n', \strlen($profile) + 2) . $profile;
+        $profiled = substr($jpeg, 0, 2) . $app2 . substr($jpeg, 2);
+
+        self::assertSame('embedded', HeaderReader::read($profiled, 'profiled jpeg')->icc);
+    }
+
     /**
      * HEIC and AVIF are both ISO base media files, told apart by their brand.
      */
