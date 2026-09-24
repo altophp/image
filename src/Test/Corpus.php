@@ -22,7 +22,7 @@ use Alto\Image\Exception\StoreException;
  */
 final class Corpus
 {
-    private const string VERSION = 'v3';
+    private const string VERSION = 'v4';
 
     /**
      * The eight EXIF orientations. Every one of them must display identically.
@@ -61,6 +61,8 @@ final class Corpus
         $this->writeAlpha();
         $this->writeBordered();
         $this->writeAwkwardPngs();
+        $this->writeAwkwardJpegs();
+        $this->writeDeviceExif();
         $this->writeOrientations();
         $this->writeAnimation();
         $this->writeMalformed();
@@ -83,7 +85,7 @@ final class Corpus
     {
         $this->build();
 
-        return [
+        $fixtures = [
             'photograph jpeg' => $this->path('photo.jpg'),
             'photograph png' => $this->path('photo.png'),
             'checkerboard' => $this->path('checkerboard.png'),
@@ -98,7 +100,21 @@ final class Corpus
             'png 16-bit grey' => $this->path('deep-grey.png'),
             'png palette' => $this->path('palette.png'),
             'png palette with transparency' => $this->path('palette-trns.png'),
+            'png interlaced' => $this->path('interlaced.png'),
+            'jpeg device exif' => $this->path('device-exif.jpg'),
         ];
+
+        foreach ([
+            'jpeg progressive' => 'progressive.jpg',
+            'jpeg grayscale' => 'grayscale.jpg',
+            'jpeg cmyk' => 'cmyk.jpg',
+        ] as $label => $name) {
+            if (is_file($path = $this->path($name))) {
+                $fixtures[$label] = $path;
+            }
+        }
+
+        return $fixtures;
     }
 
     /**
@@ -233,6 +249,75 @@ final class Corpus
         file_put_contents($this->directory . '/palette.png', PngWriter::palette(192, 192, false));
         file_put_contents($this->directory . '/palette-trns.png', PngWriter::palette(192, 192, true));
         file_put_contents($this->directory . '/interlaced.png', PngWriter::interlaced(192, 192));
+    }
+
+    /**
+     * JPEG layouts GD cannot produce. They stay conditional so installing the
+     * conformance kit never makes Imagick a dependency.
+     */
+    private function writeAwkwardJpegs(): void
+    {
+        // @codeCoverageIgnoreStart
+        if (!\extension_loaded('imagick') || !class_exists(\Imagick::class)) {
+            return;
+        }
+        // @codeCoverageIgnoreEnd
+
+        $source = new \Imagick($this->directory . '/photo.png');
+
+        try {
+            $this->writeJpegVariant(
+                $source,
+                'progressive.jpg',
+                static fn(\Imagick $image): bool => $image->transformImageColorspace(\Imagick::COLORSPACE_SRGB),
+                true,
+            );
+            $this->writeJpegVariant(
+                $source,
+                'grayscale.jpg',
+                static fn(\Imagick $image): bool => $image->transformImageColorspace(\Imagick::COLORSPACE_GRAY),
+            );
+            $this->writeJpegVariant(
+                $source,
+                'cmyk.jpg',
+                static fn(\Imagick $image): bool => $image->transformImageColorspace(\Imagick::COLORSPACE_CMYK),
+            );
+        } finally {
+            $source->clear();
+        }
+    }
+
+    /**
+     * @param \Closure(\Imagick): bool $setColourSpace
+     */
+    private function writeJpegVariant(\Imagick $source, string $name, \Closure $setColourSpace, bool $progressive = false): void
+    {
+        $image = clone $source;
+
+        try {
+            $setColourSpace($image);
+            $image->setImageFormat('jpeg');
+            $image->setImageCompression(\Imagick::COMPRESSION_JPEG);
+            $image->setImageCompressionQuality(92);
+            $image->setInterlaceScheme($progressive ? \Imagick::INTERLACE_PLANE : \Imagick::INTERLACE_NO);
+            $image->writeImage($this->directory . '/' . $name);
+        } finally {
+            $image->clear();
+        }
+    }
+
+    /**
+     * Real device metadata grafted onto generated pixels, so the corpus keeps
+     * its no-binary-fixtures contract without reducing EXIF to one local tag.
+     */
+    private function writeDeviceExif(): void
+    {
+        $jpeg = (string) file_get_contents($this->directory . '/photo.jpg');
+
+        file_put_contents(
+            $this->directory . '/device-exif.jpg',
+            substr($jpeg, 0, 2) . DeviceExif::segment() . substr($jpeg, 2),
+        );
     }
 
     /**
