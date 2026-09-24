@@ -35,7 +35,7 @@ final readonly class Encoding implements \Stringable
         public ?Format $format = null,
         public ?int $quality = null,
         public Effort $effort = Effort::Balanced,
-        public MetadataPolicy $metadata = MetadataPolicy::Strip,
+        public MetadataPolicy $metadata = MetadataPolicy::ColourProfile,
         public ?int $maxBytes = null,
         public bool $progressive = true,
         public bool $lossless = false,

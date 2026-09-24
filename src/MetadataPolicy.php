@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Alto\Image;
 
 /**
- * Controls which source metadata survives in an encoded output.
+ * Controls which source metadata survives; the default retains only the colour profile.
  *
  * @author Simon André <smn.andre@gmail.com>
  */

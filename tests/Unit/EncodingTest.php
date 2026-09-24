@@ -28,6 +28,15 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MetadataPolicy::class)]
 final class EncodingTest extends TestCase
 {
+    public function testTheDefaultKeepsTheColourProfileButNotPrivateMetadata(): void
+    {
+        $encoding = new Encoding();
+
+        self::assertSame(MetadataPolicy::ColourProfile, $encoding->metadata);
+        self::assertTrue($encoding->metadata->keepsProfile());
+        self::assertFalse($encoding->metadata->keepsMetadata());
+    }
+
     public function testANullFormatMeansWhateverTheSourceIs(): void
     {
         $encoding = new Encoding();

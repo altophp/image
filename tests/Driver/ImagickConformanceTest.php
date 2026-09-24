@@ -34,13 +34,13 @@ final class ImagickConformanceTest extends DriverTestCase
         return new ImagickDriver();
     }
 
-    public function testColourProfilePreservesARealIccProfileAndStripRemovesIt(): void
+    public function testTheDefaultPreservesARealIccProfileAndStripRemovesIt(): void
     {
         $source = self::corpus()->path('display-p3.jpg');
         $kept = Image::open($source)
             ->using($this->driver())
             ->fit(64, 64)
-            ->encode(Format::Jpeg, metadata: MetadataPolicy::ColourProfile)
+            ->jpeg()
             ->render();
         $stripped = Image::open($source)
             ->using($this->driver())
@@ -59,5 +59,22 @@ final class ImagickConformanceTest extends DriverTestCase
         self::assertSame(hash('sha256', IccProfile::displayP3()), hash('sha256', $profile));
         self::assertSame([], $strippedImage->getImageProfiles('icc', true));
         self::assertNull($stripped->metadata->icc);
+    }
+
+    public function testTheDefaultStripsRealDeviceExifAndKeepRetainsIt(): void
+    {
+        $source = self::corpus()->path('device-exif.jpg');
+        $stripped = Image::open($source)->using($this->driver())->fit(64, 64)->jpeg()->render();
+        $kept = Image::open($source)
+            ->using($this->driver())
+            ->fit(64, 64)
+            ->encode(Format::Jpeg, metadata: MetadataPolicy::Keep)
+            ->render();
+
+        self::assertFalse($stripped->metadata->hasMetadata);
+        self::assertStringNotContainsString("Exif\x00\x00", $stripped->bytes);
+        self::assertTrue($kept->metadata->hasMetadata);
+        self::assertStringContainsString("Exif\x00\x00", $kept->bytes);
+        self::assertStringContainsString("Canon EOS 5D Mark II\x00", $kept->bytes);
     }
 }

@@ -222,7 +222,7 @@ final class ImageCompositionTest extends TestCase
         self::assertSame(Format::Png, $changed->metadata()->format);
     }
 
-    public function testKeepingOnlyTheColourProfileIsAFirstClassChoice(): void
+    public function testKeepingOnlyTheColourProfileIsTheDefault(): void
     {
         $image = Image::open($this->source());
 
@@ -230,7 +230,8 @@ final class ImageCompositionTest extends TestCase
             $image->withMetadata(\Alto\Image\MetadataPolicy::ColourProfile)->signature(),
             $image->keepColourProfile()->signature(),
         );
-        self::assertNotSame($image->signature(), $image->keepColourProfile()->signature());
+        self::assertSame($image->signature(), $image->keepColourProfile()->signature());
+        self::assertNotSame($image->signature(), $image->keepMetadata()->signature());
     }
 
     public function testHeightsFanOutAndCompatibleRequestsCombine(): void

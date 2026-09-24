@@ -158,9 +158,10 @@ $removed = $store->prune(new DateTimeImmutable('-30 days'));
 
 ## Metadata and safety
 
-Metadata is stripped by default, including EXIF and GPS data. Request only the
-ICC profile with `keepColourProfile()`, or all supported metadata with
-`keepMetadata()`.
+EXIF, IPTC and XMP are stripped by default, so GPS coordinates in an uploaded
+photograph do not reach a browser by accident. The ICC colour profile is kept so
+the pixels retain their meaning. Use `withMetadata()` to remove the profile too,
+or `keepMetadata()` to retain all supported metadata.
 
 ```php
 use Alto\Image\Image;

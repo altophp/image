@@ -306,7 +306,7 @@ abstract readonly class AbstractImage
     }
 
     /**
-     * Preserves metadata instead of applying the default stripping policy.
+     * Preserves EXIF, IPTC, and XMP as well as the colour profile kept by default.
      */
     public function keepMetadata(): static
     {
