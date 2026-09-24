@@ -24,14 +24,16 @@ ICC conversion.
 | Blur, sharpen, adjust, tint | Exact |
 | Metadata preservation | Supported when the delegate permits it |
 | ICC conversion | Supported with LCMS |
-| Animated images | First frame |
+| Animated images | Frame-by-frame for animated output; first frame for static output |
 
 Use `vendor/bin/image doctor` to inspect the current machine.
 
 ## Limits
 
 - SVG is rasterized at its declared size.
-- Animated input is reduced to the first frame.
+- Animated input is coalesced and transformed frame by frame. Frame timing,
+  disposal and loop count are retained when the output format supports
+  animation; a static output uses the first frame.
 - Free-angle rotation can differ by one or two edge pixels.
 - Available formats vary with ImageMagick delegates.
 

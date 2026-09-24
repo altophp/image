@@ -23,19 +23,21 @@ $ vendor/bin/image doctor
 | --- | --- | --- | --- | --- |
 | JPEG | `.jpg`, `.jpeg`, `.jpe`, `.jfif` | No | No | Widely readable and writable; quality is lossy. |
 | PNG | `.png` | Yes | No | Lossless output; metadata support depends on the driver. |
-| WebP | `.webp` | Yes | Yes | Build-dependent read and write support; only the first input frame is used. |
+| WebP | `.webp` | Yes | Yes | Build-dependent read and write support; Imagick can preserve animation. |
 | AVIF | `.avif`, `.avifs` | Yes | Yes | Requires a matching GD build or ImageMagick delegate. |
 | JPEG XL | `.jxl` | Yes | Yes | Known by ALTO; current driver support depends on installed delegates. |
 | HEIC | `.heic`, `.heif`, `.hif` | Yes | Yes | Imagick only when its ImageMagick build has a HEIC delegate. |
 | TIFF | `.tif`, `.tiff` | Yes | No | Imagick support depends on its ImageMagick delegates. |
-| GIF | `.gif` | Yes | Yes | GD and Imagick use the first input frame. |
+| GIF | `.gif` | Yes | Yes | Imagick preserves animation; GD uses the first input frame. |
 | BMP | `.bmp`, `.dib` | No | No | GD support depends on its build; Imagick depends on delegates. |
 | SVG | `.svg`, `.svgz` | Yes | No | Vector source; Imagick rasterizes it at its declared size. GD refuses it. |
 
-Animation in the table describes the file format, not multi-frame processing
-by this package. ALTO Image currently renders the first frame and reports that
-approximation. SVG can be detected and planned without implying that a raster
-driver is available.
+Animation in the table describes the file format. Imagick coalesces animated
+input and applies the pipeline to every frame when the output format supports
+animation. A static output and every GD output use the first frame. Delegate
+support still determines whether Imagick can read and write a particular
+animated format. SVG can be detected and planned without implying that a
+raster driver is available.
 
 ## Select a format
 
