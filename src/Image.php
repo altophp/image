@@ -16,6 +16,7 @@ namespace Alto\Image;
 use Alto\Image\Analyzer\AnalyzerInterface;
 use Alto\Image\Analyzer\Raster;
 use Alto\Image\Driver\Output;
+use Alto\Image\Exception\InvalidArgumentException;
 use Alto\Image\Internal\AbstractImage;
 use Alto\Image\Internal\AtomicWriter;
 use Alto\Image\Store\LocalStore;
@@ -83,7 +84,8 @@ final readonly class Image extends AbstractImage implements \Stringable
 
     public function save(string $path): Result
     {
-        $result = $this->render();
+        $image = $this->forPath($path);
+        $result = $image->render();
         AtomicWriter::write($path, $result->bytes);
 
         return $result->withPath($path);
@@ -133,5 +135,30 @@ final readonly class Image extends AbstractImage implements \Stringable
     protected function recreate(array $specs, ?\Alto\Image\Limits $limits, ?\Alto\Image\Driver\DriverInterface $driver): static
     {
         return new self($this->source, $specs, $limits, $driver);
+    }
+
+    private function forPath(string $path): self
+    {
+        $format = Format::tryFromExtension(pathinfo($path, \PATHINFO_EXTENSION));
+
+        if (null === $format) {
+            return $this;
+        }
+
+        $configured = $this->specs[0]->encoding->format;
+
+        if (null === $configured) {
+            return $this->encode($format);
+        }
+
+        if ($configured !== $format) {
+            throw new InvalidArgumentException(\sprintf(
+                'Cannot save %s bytes to a .%s path. Change the path or the configured format.',
+                $configured->value,
+                pathinfo($path, \PATHINFO_EXTENSION),
+            ));
+        }
+
+        return $this;
     }
 }

@@ -289,6 +289,49 @@ final class ImageCompositionTest extends TestCase
         }
     }
 
+    public function testSaveInfersTheFormatFromAKnownExtension(): void
+    {
+        $directory = sys_get_temp_dir() . '/alto-image-save-' . bin2hex(random_bytes(6));
+        $path = $directory . '/photo.webp';
+
+        try {
+            $result = Image::open($this->source())->using(new ArrayDriver())->save($path);
+
+            self::assertSame(Format::Webp, $result->metadata->format);
+            self::assertSame($path, $result->path);
+        } finally {
+            @unlink($path);
+            @rmdir($directory);
+        }
+    }
+
+    public function testSaveRejectsAPathThatContradictsTheConfiguredFormat(): void
+    {
+        $path = sys_get_temp_dir() . '/alto-image-' . bin2hex(random_bytes(6)) . '.webp';
+
+        try {
+            $this->expectException(\Alto\Image\Exception\InvalidArgumentException::class);
+            $this->expectExceptionMessage('Cannot save png bytes to a .webp path.');
+
+            Image::open($this->source())->using(new ArrayDriver())->png()->save($path);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function testSaveKeepsTheConfiguredFormatForAnUnknownExtension(): void
+    {
+        $path = sys_get_temp_dir() . '/alto-image-' . bin2hex(random_bytes(6)) . '.image';
+
+        try {
+            $result = Image::open($this->source())->using(new ArrayDriver())->save($path);
+
+            self::assertSame(Format::Png, $result->metadata->format);
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function testTheDriverIsChosenPerCallRatherThanThroughAContainer(): void
     {
         $driver = new ArrayDriver();
