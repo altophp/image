@@ -22,7 +22,7 @@ use Alto\Image\Exception\StoreException;
  */
 final class Corpus
 {
-    private const string VERSION = 'v7';
+    private const string VERSION = 'v8';
 
     /**
      * The eight EXIF orientations. Every one of them must display identically.
@@ -434,9 +434,19 @@ final class Corpus
         // point is only that a probe reports more than one frame.
         $frames = [];
 
-        foreach ([[230, 57, 70], [29, 53, 87]] as $rgb) {
+        foreach ([0, 1] as $colour) {
             $frame = imagecreate(32, 32);
-            imagecolorallocate($frame, $rgb[0], $rgb[1], $rgb[2]);
+            $red = imagecolorallocate($frame, 230, 57, 70);
+            $blue = imagecolorallocate($frame, 29, 53, 87);
+
+            // @codeCoverageIgnoreStart
+            if (false === $red || false === $blue) {
+                throw new \RuntimeException('Could not allocate the animation fixture palette.');
+            }
+            // @codeCoverageIgnoreEnd
+
+            $palette = [$red, $blue];
+            imagefill($frame, 0, 0, $palette[$colour]);
             ob_start();
             imagegif($frame);
             $frames[] = (string) ob_get_clean();
@@ -448,7 +458,8 @@ final class Corpus
         // Splice the second frame's image descriptor and data in before the
         // trailer of the first, each behind a graphic control extension.
         $gce = "\x21\xF9\x04\x00\x32\x00\x00\x00";
-        $body = substr($first, 0, -1);
+        $firstDescriptor = (int) strpos($first, "\x2C");
+        $body = substr($first, 0, $firstDescriptor) . $gce . substr($first, $firstDescriptor, -1);
         $secondData = substr($second, (int) strpos($second, "\x2C"), -1);
 
         file_put_contents($this->directory . '/animation.gif', $body . $gce . $secondData . "\x3B");

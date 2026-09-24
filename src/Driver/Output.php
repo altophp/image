@@ -62,6 +62,7 @@ final readonly class Output implements \Stringable
         return $this->encoding->metadata->project($projected->with(
             format: $format,
             hasAlpha: $projected->hasAlpha && $format->supportsAlpha(),
+            frames: $format->supportsAnimation() ? $projected->frames : 1,
         ))->withoutBytes();
     }
 

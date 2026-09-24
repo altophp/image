@@ -127,9 +127,9 @@ final class ImagickDriver implements DriverInterface
             // @codeCoverageIgnoreEnd
         }
 
-        // Animation survives as its first frame, which is an answer but not an
-        // exact one. Vectors are rasterised at their declared size only.
-        return $format->supportsAnimation() || $format->isVector() ? Support::Approximate : Support::Exact;
+        // Vectors are rasterised at their declared size only. Animated rasters
+        // are coalesced and transformed frame by frame.
+        return $format->isVector() ? Support::Approximate : Support::Exact;
     }
 
     public function canEncode(Encoding $encoding): Support
@@ -185,13 +185,22 @@ final class ImagickDriver implements DriverInterface
     {
         $spec = $plan->requests[$index];
         $expected = $plan->outputs[$index];
+        $encoding = $spec->encoding->resolve($plan->input->format);
+        $format = $encoding->formatOr($plan->input->format);
 
         // Every output but the last works on its own copy, because the pipeline
         // mutates and the master has to survive for the next one.
         $image = $isLast ? $master : clone $master;
 
         try {
-            [$image, $notes] = $this->pipeline->run($image, $plan->operations($index));
+            if ($image->getNumberImages() > 1 && !$format->supportsAnimation()) {
+                $image->setFirstIterator();
+                $first = $image->getImage();
+                $image->clear();
+                $image = $first;
+            }
+
+            [$image, $notes] = $this->transform($image, $plan->operations($index));
             $degradations = [...$plan->degradations, ...$notes];
             $actual = $this->pipeline->size($image);
 
@@ -210,12 +219,6 @@ final class ImagickDriver implements DriverInterface
             // pixels can reach the encoder.
             $carriesAlpha = $spec->transform->estimate($plan->input)->hasAlpha;
 
-            if (!$carriesAlpha) {
-                $image->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
-            }
-
-            $encoding = $spec->encoding->resolve($plan->input->format);
-            $format = $encoding->formatOr($plan->input->format);
             [$bytes, $encodeNotes] = $this->encode($image, $encoding, $format, $carriesAlpha);
 
             if (Support::Approximate === $this->canEncode($encoding)) {
@@ -283,24 +286,62 @@ final class ImagickDriver implements DriverInterface
             // @codeCoverageIgnoreEnd
         }
 
-        // An animation arrives as N frames; this driver ships the first one and
-        // canDecode() has already said so.
+        // Coalescing turns frame-local rectangles into full canvases before the
+        // same transform is applied to every frame.
         if ($image->getNumberImages() > 1) {
-            $image->setIteratorIndex(0);
-            $first = $image->getImage();
+            $coalesced = $image->coalesceImages();
             $image->clear();
-            $image = $first;
+            $image = $coalesced;
         }
 
         // The Plan already oriented the metadata, so this puts the pixels where
         // the projection assumed they were, then spends the tag.
-        $this->orient($image, $plan->source->metadata()->orientation);
+        foreach ($image as $frame) {
+            $this->orient($frame, $plan->source->metadata()->orientation);
+            $frame->setImagePage(0, 0, 0, 0);
+        }
 
-        $image->setImagePage(0, 0, 0, 0);
+        $image->setFirstIterator();
 
         // jpeg:size decodes to at least the hint, never exactly it, so whatever
         // came back is now the truth the pipeline resizes from.
         return $image;
+    }
+
+    /**
+     * @param list<OperationInterface> $operations
+     *
+     * @return array{\Imagick, list<string>}
+     */
+    private function transform(\Imagick $image, array $operations): array
+    {
+        if ($image->getNumberImages() <= 1) {
+            return $this->pipeline->run($image, $operations);
+        }
+
+        $sequence = new \Imagick();
+        $iterations = $image->getImageIterations();
+        $notes = [];
+
+        foreach ($image as $source) {
+            $delay = $source->getImageDelay();
+            $dispose = $source->getImageDispose();
+            $ticks = $source->getImageTicksPerSecond();
+            $frame = $source->getImage();
+            [$frame, $frameNotes] = $this->pipeline->run($frame, $operations);
+            $frame->setImageDelay($delay);
+            $frame->setImageDispose($dispose);
+            $frame->setImageTicksPerSecond($ticks);
+            $sequence->addImage($frame);
+            $frame->clear();
+            $notes = [...$notes, ...$frameNotes];
+        }
+
+        $image->clear();
+        $sequence->setFirstIterator();
+        $sequence->setImageIterations($iterations);
+
+        return [$sequence, array_values(array_unique($notes))];
     }
 
     /**
@@ -452,9 +493,17 @@ final class ImagickDriver implements DriverInterface
     {
         $notes = [];
 
-        $this->applyMetadataPolicy($image, $encoding->metadata);
-        $image->setImageFormat($this->magickName($format));
-        $this->applyFormatOptions($image, $format, $encoding);
+        foreach ($image as $frame) {
+            $this->applyMetadataPolicy($frame, $encoding->metadata);
+            $frame->setImageFormat($this->magickName($format));
+            $this->applyFormatOptions($frame, $format, $encoding);
+
+            if (!$carriesAlpha) {
+                $frame->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+            }
+        }
+
+        $image->setFirstIterator();
 
         if (null === $encoding->maxBytes || !$format->isLossy()) {
             return [$this->write($image, $format, $encoding->qualityFor($format), $carriesAlpha), $notes];
@@ -492,11 +541,21 @@ final class ImagickDriver implements DriverInterface
             $image->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
         }
 
+        $optimised = null;
+
         try {
-            $bytes = $image->getImagesBlob();
+            // Coalesced frames are full canvases. GIF stores deltas efficiently,
+            // so reconstruct those frame-local rectangles before writing.
+            if (Format::Gif === $format && $image->getNumberImages() > 1) {
+                $optimised = $image->deconstructImages();
+            }
+
+            $bytes = ($optimised ?? $image)->getImagesBlob();
             // @codeCoverageIgnoreStart
         } catch (\ImagickException $error) {
             throw DriverException::failed('imagick', 'encoding to ' . $format->value, $error->getMessage());
+        } finally {
+            $optimised?->clear();
             // @codeCoverageIgnoreEnd
         }
 

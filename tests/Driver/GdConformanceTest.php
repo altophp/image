@@ -61,4 +61,16 @@ final class GdConformanceTest extends DriverTestCase
         self::assertNull($result->metadata->icc);
         self::assertStringContainsString('dropped the embedded ICC profile', implode("\n", $result->degradations));
     }
+
+    public function testAnimatedInputIsReportedAsAOneFrameApproximation(): void
+    {
+        $result = Image::open(self::corpus()->path('animation.gif'))
+            ->using($this->driver())
+            ->fit(16, 16)
+            ->encode(Format::Gif)
+            ->render();
+
+        self::assertSame(1, $result->metadata->frames);
+        self::assertNotSame([], $result->degradations);
+    }
 }
