@@ -182,7 +182,8 @@ final class ImageCompositionTest extends TestCase
         $source = $this->source();
 
         self::assertSame('cover=800x450', (string) Image::open($source)->cover(800, 450)->transform());
-        self::assertSame('contain=800x450,bg:ffffff', (string) Image::open($source)->contain(800, 450, '#ffffff')->transform());
+        self::assertSame('contain=800x450,bg:ffffff', (string) Image::open($source)->contain(800, 450, background: '#ffffff')->transform());
+        self::assertSame('contain=800x450', (string) Image::open($source)->contain(800, null, 16 / 9)->transform());
         self::assertSame('inside=1200x1200', (string) Image::open($source)->fit(1200, 1200)->transform());
         self::assertSame('inside=800x', (string) Image::open($source)->scale(width: 800)->transform());
         self::assertSame('fill=800x450', (string) Image::open($source)->stretch(800, 450)->transform());
