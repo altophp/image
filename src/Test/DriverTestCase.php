@@ -65,6 +65,14 @@ abstract class DriverTestCase extends TestCase
         return self::$corpus ??= Corpus::shared();
     }
 
+    /**
+     * @return array<string, string>
+     */
+    protected function readableFixtures(): array
+    {
+        return self::corpus()->readable();
+    }
+
     // ---------------------------------------------------------------- the claim
 
     /**
@@ -77,7 +85,7 @@ abstract class DriverTestCase extends TestCase
         $parsed = Transform::parse($transform);
         $checked = 0;
 
-        foreach (self::corpus()->readable() as $label => $path) {
+        foreach ($this->readableFixtures() as $label => $path) {
             $image = Image::open($path)->using($driver)->transformedBy($parsed)->png();
 
             if (Support::No === $driver->canDecode($image->sourceMetadata()->format)) {
