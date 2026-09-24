@@ -77,4 +77,47 @@ final class ImagickConformanceTest extends DriverTestCase
         self::assertStringContainsString("Exif\x00\x00", $kept->bytes);
         self::assertStringContainsString("Canon EOS 5D Mark II\x00", $kept->bytes);
     }
+
+    public function testItTransformsEveryFrameAndPreservesAnimationTiming(): void
+    {
+        $result = Image::open(self::corpus()->path('animation.gif'))
+            ->using($this->driver())
+            ->fit(16, 16)
+            ->encode(Format::Gif)
+            ->render();
+
+        $image = new \Imagick();
+        $image->readImageBlob($result->bytes);
+        $delays = [];
+        $sizes = [];
+
+        foreach ($image as $frame) {
+            $delays[] = $frame->getImageDelay();
+            $sizes[] = [$frame->getImageWidth(), $frame->getImageHeight()];
+        }
+
+        self::assertSame(2, $result->metadata->frames);
+        self::assertSame(2, $image->getNumberImages());
+        self::assertSame(1, $image->getImageIterations());
+        self::assertSame([50, 50], $delays);
+        self::assertSame([[16, 16], [16, 16]], $sizes);
+        self::assertSame([], $result->degradations);
+    }
+
+    public function testConvertingAnAnimationToAStaticFormatProducesOneFrame(): void
+    {
+        $request = Image::open(self::corpus()->path('animation.gif'))
+            ->using($this->driver())
+            ->fit(16, 16)
+            ->png();
+        $result = $request->render();
+
+        $image = new \Imagick();
+        $image->readImageBlob($result->bytes);
+
+        self::assertSame(2, $request->sourceMetadata()->frames);
+        self::assertSame(1, $request->metadata()->frames);
+        self::assertSame(1, $result->metadata->frames);
+        self::assertSame(1, $image->getNumberImages());
+    }
 }

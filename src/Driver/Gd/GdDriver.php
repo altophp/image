@@ -222,7 +222,7 @@ final class GdDriver implements DriverInterface
         }
 
         return new Result(
-            $expected->withoutIcc()->with(size: $actual, bytes: \strlen($bytes), hasMetadata: false),
+            $expected->withoutIcc()->with(size: $actual, frames: 1, bytes: \strlen($bytes), hasMetadata: false),
             $bytes,
             $this->name(),
             array_values(array_unique([...$degradations, ...$encodeNotes])),
