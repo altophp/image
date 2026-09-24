@@ -134,9 +134,9 @@ final class GdDriver implements DriverInterface
             return Support::No;
         }
 
-        // GD writes no EXIF, no IPTC, no XMP and no ICC profile, so any policy
-        // other than stripping is a promise it cannot keep.
-        if (MetadataPolicy::Strip !== $encoding->metadata) {
+        // ColourProfile is exact for an unprofiled source. A profiled source is
+        // reported at render time, when the driver finally knows it has one.
+        if (\in_array($encoding->metadata, [MetadataPolicy::Keep, MetadataPolicy::Copyright], true)) {
             return Support::Approximate;
         }
 
@@ -217,8 +217,12 @@ final class GdDriver implements DriverInterface
             $carriesAlpha,
         );
 
+        if ($encoding->metadata->keepsProfile() && null !== $plan->input->icc) {
+            $encodeNotes[] = 'gd dropped the embedded ICC profile because GD cannot preserve colour profiles';
+        }
+
         return new Result(
-            $expected->with(size: $actual, bytes: \strlen($bytes), hasMetadata: false),
+            $expected->withoutIcc()->with(size: $actual, bytes: \strlen($bytes), hasMetadata: false),
             $bytes,
             $this->name(),
             array_values(array_unique([...$degradations, ...$encodeNotes])),

@@ -15,6 +15,9 @@ namespace Alto\Image\Tests\Driver;
 
 use Alto\Image\Driver\DriverInterface;
 use Alto\Image\Driver\Gd\GdDriver;
+use Alto\Image\Format;
+use Alto\Image\Image;
+use Alto\Image\MetadataPolicy;
 use Alto\Image\Test\DriverTestCase;
 
 /**
@@ -43,5 +46,19 @@ final class GdConformanceTest extends DriverTestCase
         unset($fixtures['png interlaced']);
 
         return $fixtures;
+    }
+
+    public function testDroppingAnEmbeddedProfileIsReported(): void
+    {
+        $source = self::corpus()->path('display-p3.jpg');
+        $result = Image::open($source)
+            ->using($this->driver())
+            ->fit(64, 64)
+            ->encode(Format::Jpeg, metadata: MetadataPolicy::ColourProfile)
+            ->render();
+
+        self::assertSame('embedded', Image::open($source)->sourceMetadata()->icc);
+        self::assertNull($result->metadata->icc);
+        self::assertStringContainsString('dropped the embedded ICC profile', implode("\n", $result->degradations));
     }
 }

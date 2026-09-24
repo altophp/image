@@ -22,7 +22,7 @@ use Alto\Image\Exception\StoreException;
  */
 final class Corpus
 {
-    private const string VERSION = 'v4';
+    private const string VERSION = 'v7';
 
     /**
      * The eight EXIF orientations. Every one of them must display identically.
@@ -62,6 +62,7 @@ final class Corpus
         $this->writeBordered();
         $this->writeAwkwardPngs();
         $this->writeAwkwardJpegs();
+        $this->writeProfiledJpeg();
         $this->writeDeviceExif();
         $this->writeOrientations();
         $this->writeAnimation();
@@ -108,6 +109,7 @@ final class Corpus
             'jpeg progressive' => 'progressive.jpg',
             'jpeg grayscale' => 'grayscale.jpg',
             'jpeg cmyk' => 'cmyk.jpg',
+            'jpeg display p3' => 'display-p3.jpg',
         ] as $label => $name) {
             if (is_file($path = $this->path($name))) {
                 $fixtures[$label] = $path;
@@ -285,6 +287,21 @@ final class Corpus
         } finally {
             $source->clear();
         }
+    }
+
+    /**
+     * A real profile inside the JPEG APP2 structure, without requiring Imagick.
+     */
+    private function writeProfiledJpeg(): void
+    {
+        $jpeg = (string) file_get_contents($this->directory . '/photo.jpg');
+        $payload = "ICC_PROFILE\x00\x01\x01" . IccProfile::displayP3();
+        $app2 = "\xFF\xE2" . pack('n', \strlen($payload) + 2) . $payload;
+
+        file_put_contents(
+            $this->directory . '/display-p3.jpg',
+            substr($jpeg, 0, 2) . $app2 . substr($jpeg, 2),
+        );
     }
 
     /**

@@ -102,7 +102,7 @@ final class HeaderReader
             self::frames($format, $head),
             self::orientation($format, $head),
             self::colourSpace($format, $head, $info),
-            null,
+            self::icc($format, $head),
             $bytes,
             self::hasMetadata($format, $head),
         );
@@ -339,6 +339,18 @@ final class HeaderReader
             Format::Tiff, Format::Heic, Format::Avif, Format::Jxl => true,
             default => false,
         };
+    }
+
+    private static function icc(Format $format, string $head): ?string
+    {
+        $embedded = match ($format) {
+            Format::Jpeg => str_contains($head, "ICC_PROFILE\x00"),
+            Format::Png => str_contains($head, 'iCCP'),
+            Format::Webp => str_contains($head, 'ICCP'),
+            default => false,
+        };
+
+        return $embedded ? 'embedded' : null;
     }
 
     private static function hasAlpha(Format $format, string $head, mixed $info): bool
