@@ -20,6 +20,7 @@ no image extension. Rendering uses GD or Imagick.
 
 - Crop by coordinates, anchor, focal point, attention or entropy.
 - Preserve ICC profiles or convert pixels to another colour space with Imagick.
+- Transform animated images frame by frame with Imagick.
 - Produce several sizes and formats from one source decode.
 - Read files, encoded bytes and streams. Write files or storage backends.
 - Encode common raster formats supported by the selected driver. Controls
@@ -28,7 +29,8 @@ no image extension. Rendering uses GD or Imagick.
 
 See [crop](docs/transform/crop.md),
 [colour profile conversion](docs/transform/colour-profile.md),
-[encoding](docs/formats.md#encode-output) and [analysis](docs/analysis.md).
+[encoding](docs/formats.md#encode-output), [drivers](docs/drivers.md) and
+[analysis](docs/analysis.md).
 
 ## Installation
 

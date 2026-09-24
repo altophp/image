@@ -25,15 +25,15 @@ current machine.
 | Feature | GD | Imagick |
 | --- | --- | --- |
 | Raster input and output | Depends on compiled formats | Depends on compiled delegates |
-| Animated input | First frame only | First frame only |
+| Animated input | First frame only | Frame-by-frame for animated output; first frame for static output |
 | Vector input | No | Rasterized at declared size |
 | Metadata preservation | No | Supported where the delegate permits it |
 | ICC profile conversion | No | Requires LCMS |
 | Local operation behavior | Some effects are approximate | Arbitrary-angle rotation may be approximate |
 | Batch execution | One decode per rendered source batch | One decode per rendered source batch |
 
-First-frame reads and vector rasterization are reported as `Approximate`, not
-silent exact support. Encoding effort and policy options can also vary by
+GD first-frame reads and vector rasterization are reported as `Approximate`,
+not silent exact support. Encoding effort and policy options can also vary by
 format and driver.
 
 ## Capability levels
