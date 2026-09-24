@@ -1,26 +1,27 @@
 # Image safety
 
-ALTO Image applies source limits before decoding and strips metadata by default.
-Keep the defaults for untrusted uploads unless the application has a specific
-reason to change them.
+ALTO Image applies source limits before decoding. It strips EXIF, IPTC and XMP
+by default while keeping the ICC colour profile, so untrusted uploads do not
+publish private metadata or lose their intended colours.
 
 ## Metadata policies
 
 | Policy | ICC profile | EXIF, IPTC, and XMP |
 | --- | --- | --- |
 | `MetadataPolicy::Strip` | remove | remove |
-| `MetadataPolicy::ColourProfile` | keep | remove |
+| `MetadataPolicy::ColourProfile` (default) | keep | remove |
 | `MetadataPolicy::Copyright` | remove | keep copyright and author fields when supported |
 | `MetadataPolicy::Keep` | keep | keep what the driver supports |
 
-`Strip` is the default and removes EXIF and GPS data.
+The default removes EXIF and GPS data but retains the colour profile. Use
+`Strip` when the profile must be removed too.
 
 ```php
 use Alto\Image\Image;
 
-$private = Image::open('upload.jpg')->webp();
-$colourManaged = $private->keepColourProfile();
-$archival = $private->keepMetadata();
+$colourManaged = Image::open('upload.jpg')->webp();
+$stripped = $colourManaged->withMetadata(\Alto\Image\MetadataPolicy::Strip);
+$archival = $colourManaged->keepMetadata();
 ```
 
 Use `withMetadata()` for an explicit policy. GD cannot preserve source metadata
