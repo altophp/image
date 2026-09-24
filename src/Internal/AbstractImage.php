@@ -97,7 +97,7 @@ abstract readonly class AbstractImage
     /**
      * Fills the box exactly and pads its shortfall.
      */
-    public function contain(?int $width = null, ?int $height = null, string|int $background = 0x00000000, ?float $ratio = null, ?Anchor $gravity = null, ?Scaling $scaling = null): static
+    public function contain(?int $width = null, ?int $height = null, ?float $ratio = null, ?Anchor $gravity = null, ?Scaling $scaling = null, string|int $background = 0x00000000): static
     {
         return $this->reshape(static fn(?Resize $resize): Resize => ($resize ?? new Resize($width, $height, Fit::Contain))->with(
             width: $width,

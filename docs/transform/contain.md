@@ -21,10 +21,10 @@ Image::open('source-landscape.png')
 | Option | Default | Use |
 | --- | --- | --- |
 | `width`, `height` | `null` | Target box |
-| `background` | transparent | Padding colour |
 | `ratio` | `null` | Target ratio when the box is unresolved |
 | `gravity` | `Anchor::Center` | Image placement |
 | `scaling` | `Scaling::Down` | Allowed scale direction |
+| `background` | transparent | Padding colour |
 
 ## Edge cases
 
