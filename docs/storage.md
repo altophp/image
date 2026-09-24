@@ -15,7 +15,9 @@ $result = Image::open('photo.jpg')
 ```
 
 The write is atomic on the local filesystem. `Result::$path` contains the saved
-path.
+path. When no output format was selected, a recognised file extension selects
+it. An explicitly configured format must match the extension; unknown
+extensions leave the configured or source format unchanged.
 
 ## Use the local store
 
