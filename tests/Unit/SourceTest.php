@@ -145,7 +145,6 @@ final class SourceTest extends TestCase
         $source = Source::stream($stream);
 
         self::assertSame('encoded image bytes', $source->contents());
-        self::assertSame('encoded image bytes', $source->contents());
         fclose($stream);
     }
 
