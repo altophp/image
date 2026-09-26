@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Alto\Image\Operation;
 
 use Alto\Image\Colour;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 
 /**
@@ -37,6 +38,8 @@ final readonly class Flatten implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'string']);
+
         return new self(Colour::parse($arguments['0'] ?? 'ffffff'));
     }
 }

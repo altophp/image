@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Alto\Image\Operation;
 
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 
 /**
@@ -75,6 +76,8 @@ final readonly class Adjust implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, ['b' => 'int', 'c' => 'int', 's' => 'int', 'g' => 'float']);
+
         return new self(
             (int) ($arguments['b'] ?? '0'),
             (int) ($arguments['c'] ?? '0'),

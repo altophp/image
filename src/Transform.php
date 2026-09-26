@@ -144,7 +144,11 @@ final readonly class Transform implements \Stringable, \Countable
                 implode(', ', array_keys($known)),
             ));
 
-            $parsed[] = $class::parse([self::NAME => $name] + self::arguments($arguments, $step));
+            try {
+                $parsed[] = $class::parse([self::NAME => $name] + self::arguments($arguments, $step));
+            } catch (\ValueError $error) {
+                throw new InvalidArgumentException(\sprintf('Invalid arguments in "%s": %s', $step, $error->getMessage()), 0, $error);
+            }
         }
 
         return new self($parsed);
@@ -179,6 +183,10 @@ final readonly class Transform implements \Stringable, \Countable
                     $key,
                     $step,
                 ));
+            }
+
+            if (array_key_exists($key, $parsed)) {
+                throw new InvalidArgumentException(\sprintf('Duplicate argument "%s" in "%s".', $key, $step));
             }
 
             $parsed[$key] = $value;

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Alto\Image\Operation;
 
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 
 /**
@@ -47,6 +48,8 @@ final readonly class Flip implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'string']);
+
         return new self(match ($arguments['0'] ?? 'h') {
             'h', 'horizontal', 'x' => false,
             'v', 'vertical', 'y' => true,

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Alto\Image\Operation;
 
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 
 /**
@@ -42,6 +43,8 @@ final readonly class Pixelate implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'int']);
+
         return new self((int) ($arguments['0'] ?? '8'));
     }
 }
