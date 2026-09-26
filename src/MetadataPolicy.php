@@ -31,11 +31,6 @@ enum MetadataPolicy: string
     case ColourProfile = 'profile';
 
     /**
-     * Keep the copyright and author tags, remove everything else.
-     */
-    case Copyright = 'copyright';
-
-    /**
      * Keep everything the driver can carry across.
      */
     case Keep = 'keep';
@@ -47,7 +42,7 @@ enum MetadataPolicy: string
 
     public function keepsMetadata(): bool
     {
-        return self::Keep === $this || self::Copyright === $this;
+        return self::Keep === $this;
     }
 
     public function keepsEverything(): bool
@@ -63,7 +58,6 @@ enum MetadataPolicy: string
         return match ($this) {
             self::Strip => $metadata->withoutIcc()->with(hasMetadata: false),
             self::ColourProfile => $metadata->with(hasMetadata: false),
-            self::Copyright => $metadata->withoutIcc(),
             self::Keep => $metadata,
         };
     }

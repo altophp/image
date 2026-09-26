@@ -13,15 +13,13 @@ declare(strict_types=1);
 
 namespace Alto\Image\Tests\Test;
 
-use Alto\Image\Test\DeviceExif;
-use Alto\Image\Tests\Support\SourceClassTestCase;
+use Alto\Image\Tests\Support\DeviceExif;
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\TestCase;
 
 #[CoversNothing]
-final class DeviceExifTest extends SourceClassTestCase
+final class DeviceExifTest extends TestCase
 {
-    protected const string SUBJECT = DeviceExif::class;
-
     public function testItProvidesTheDocumentedSegment(): void
     {
         $segment = DeviceExif::segment();

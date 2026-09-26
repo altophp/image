@@ -114,7 +114,6 @@ final class EncodingTest extends TestCase
         $profiled = new Metadata(new Size(640, 480), Format::Jpeg, icc: 'Display P3');
 
         self::assertFalse((new Encoding(metadata: MetadataPolicy::Strip))->isPassThrough($carrying));
-        self::assertFalse((new Encoding(metadata: MetadataPolicy::Copyright))->isPassThrough($carrying));
         self::assertFalse((new Encoding(metadata: MetadataPolicy::Strip))->isPassThrough($bare));
         self::assertTrue((new Encoding(metadata: MetadataPolicy::Keep))->isPassThrough($carrying));
         self::assertFalse((new Encoding(metadata: MetadataPolicy::Strip))->isPassThrough($profiled));
@@ -129,12 +128,10 @@ final class EncodingTest extends TestCase
         self::assertFalse(MetadataPolicy::Strip->project($source)->hasMetadata);
         self::assertSame('Adobe RGB', MetadataPolicy::ColourProfile->project($source)->icc);
         self::assertFalse(MetadataPolicy::ColourProfile->project($source)->hasMetadata);
-        self::assertNull(MetadataPolicy::Copyright->project($source)->icc);
-        self::assertTrue(MetadataPolicy::Copyright->project($source)->hasMetadata);
         self::assertSame($source, MetadataPolicy::Keep->project($source));
-        self::assertFalse(MetadataPolicy::Copyright->keepsProfile());
-        self::assertTrue(MetadataPolicy::Copyright->keepsMetadata());
-        self::assertFalse(MetadataPolicy::Copyright->keepsEverything());
+        self::assertTrue(MetadataPolicy::Keep->keepsProfile());
+        self::assertTrue(MetadataPolicy::Keep->keepsMetadata());
+        self::assertTrue(MetadataPolicy::Keep->keepsEverything());
     }
 
     public function testTwoEncodingsThatDifferAtAllHaveDifferentSignatures(): void
@@ -175,7 +172,6 @@ final class EncodingTest extends TestCase
     {
         foreach ([
             static fn(): Encoding => new Encoding(Format::Png, quality: 80),
-            static fn(): Encoding => new Encoding(Format::Png, maxBytes: 1000),
             static fn(): Encoding => new Encoding(Format::Webp, progressive: false),
             static fn(): Encoding => new Encoding(Format::Webp, quality: 80, lossless: true),
             static fn(): Encoding => new Encoding(Format::Png, lossless: true),

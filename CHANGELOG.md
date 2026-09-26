@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Return encoded strings from drivers and `Image::bytes()`, ordered byte strings from `ImageSet::bytes()`, and paths from stores. `save()` now returns `void`; remove `Result` and `render()`.
+- Compose shaping operations in call order and preserve driver identity in cache signatures.
+- Bound source reads, enforce encoding byte ceilings, and hold store locks through cache rechecks and publication.
+- Negotiate ICC preservation against source metadata, reject failed ICC conversion, and remove the unsupported copyright-only metadata policy.
+- Preserve per-pixel overlay transparency when applying opacity with GD and Imagick.
+- Move internal test support out of the distributed source tree.
+
 Notable user-visible changes are documented here from the first public release.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),

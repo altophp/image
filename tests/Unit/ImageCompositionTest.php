@@ -21,7 +21,7 @@ use Alto\Image\ImageSet;
 use Alto\Image\Internal\AbstractImage;
 use Alto\Image\Source;
 use Alto\Image\Store\LocalStore;
-use Alto\Image\Test\ArrayDriver;
+use Alto\Image\Tests\Support\ArrayDriver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -156,11 +156,14 @@ final class ImageCompositionTest extends TestCase
         Image::open($this->source())->widths(320, 640)->select(9);
     }
 
-    public function testImageSetsDoNotExposeSingularTerminals(): void
+    public function testImageSetsExposeOnlyPluralTerminals(): void
     {
-        foreach (['save', 'size', 'bytes', 'signature', 'dataUri'] as $method) {
+        foreach (['save', 'size', 'signature', 'dataUri'] as $method) {
             self::assertFalse(method_exists(ImageSet::class, $method));
         }
+
+        self::assertContains('bytes', get_class_methods(ImageSet::class));
+        self::assertContains('store', get_class_methods(ImageSet::class));
     }
 
     public function testCardinalityIsExplicitInThePublicTypes(): void
@@ -187,6 +190,19 @@ final class ImageCompositionTest extends TestCase
         self::assertSame('inside=1200x1200', (string) Image::open($source)->fit(1200, 1200)->transform());
         self::assertSame('inside=800x', (string) Image::open($source)->scale(width: 800)->transform());
         self::assertSame('fill=800x450', (string) Image::open($source)->stretch(800, 450)->transform());
+    }
+
+    public function testShapingWithAnAxisAndRatioRetainsItsPortableIdentity(): void
+    {
+        $base = Image::open($this->source());
+
+        foreach ([$base->contain(width: 800, ratio: 16 / 9), $base->cover(width: 800, ratio: 16 / 9)] as $image) {
+            $roundTrip = $base->transformedBy(\Alto\Image\Transform::parse((string) $image->transform()));
+            self::assertEquals($image->size(), $roundTrip->size());
+            self::assertSame($image->signature(), $roundTrip->signature());
+        }
+
+        self::assertNotSame($base->contain(width: 800, ratio: 16 / 9)->signature(), $base->contain(width: 800, ratio: 1)->signature());
     }
 
     public function testScaleRefusesTwoAxes(): void
@@ -269,9 +285,9 @@ final class ImageCompositionTest extends TestCase
             self::assertSame($this->source()->signature(), $image->source()->signature());
             self::assertStringStartsWith('alto:fake', $image->bytes());
             self::assertStringStartsWith('data:image/webp;base64,', $image->dataUri());
-            self::assertSame($saved, $image->save($saved)->path);
+            $image->save($saved);
             self::assertFileExists($saved);
-            self::assertNotNull($image->store($store)->path);
+            self::assertFileExists($image->store($store));
             self::assertCount(2, Image::open($this->source())->using(new ArrayDriver())->widths(20, 40)->store($store));
             self::assertStringContainsString('photo (in memory) -> as-is webp q80', (string) $image);
         } finally {
@@ -296,10 +312,11 @@ final class ImageCompositionTest extends TestCase
         $path = $directory . '/photo.webp';
 
         try {
-            $result = Image::open($this->source())->using(new ArrayDriver())->save($path);
+            $driver = new ArrayDriver();
+            Image::open($this->source())->using($driver)->save($path);
 
-            self::assertSame(Format::Webp, $result->metadata->format);
-            self::assertSame($path, $result->path);
+            self::assertStringContainsString('webp', $driver->calls()[0]['spec']);
+            self::assertFileExists($path);
         } finally {
             @unlink($path);
             @rmdir($directory);
@@ -325,9 +342,11 @@ final class ImageCompositionTest extends TestCase
         $path = sys_get_temp_dir() . '/alto-image-' . bin2hex(random_bytes(6)) . '.image';
 
         try {
-            $result = Image::open($this->source())->using(new ArrayDriver())->save($path);
+            $driver = new ArrayDriver();
+            Image::open($this->source())->using($driver)->save($path);
 
-            self::assertSame(Format::Png, $result->metadata->format);
+            self::assertSame('as-is source', $driver->calls()[0]['spec']);
+            self::assertFileExists($path);
         } finally {
             @unlink($path);
         }
@@ -337,7 +356,7 @@ final class ImageCompositionTest extends TestCase
     {
         $driver = new ArrayDriver();
 
-        Image::open($this->source())->using($driver)->cover(800, 450)->webp()->render();
+        Image::open($this->source())->using($driver)->cover(800, 450)->webp()->bytes();
 
         self::assertSame([['source' => 'photo (in memory)', 'spec' => 'cover=800x450 webp q80', 'output' => '800x450']], $driver->calls());
     }
@@ -347,7 +366,7 @@ final class ImageCompositionTest extends TestCase
         $driver = new ArrayDriver();
         $image = Image::open($this->source())->using($driver)->cover(ratio: 16 / 9)->widths(320, 640)->webp();
 
-        $image->render();
+        $image->bytes();
 
         self::assertSame(['320x180', '640x360'], $driver->outputs());
         self::assertSame(1, $driver->batches(), 'The ImageSet reached the driver in more than one batch.');

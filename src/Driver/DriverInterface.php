@@ -15,7 +15,6 @@ namespace Alto\Image\Driver;
 
 use Alto\Image\Format;
 use Alto\Image\Operation\OperationInterface;
-use Alto\Image\Result;
 
 /**
  * The contract for probing capabilities and processing negotiated image plans.
@@ -48,14 +47,14 @@ interface DriverInterface
     /**
      * Whether this driver can write an encoding as specified.
      */
-    public function canEncode(Encoding $encoding): Support;
+    public function canEncode(Encoding $encoding, ?\Alto\Image\Metadata $source = null): Support;
 
     /**
      * Produces every requested output from one source, in the order the Plan lists them.
      *
      * A driver can share one decode across every output in the Plan.
      *
-     * @return list<Result> one per requested output, same order
+     * @return list<string> one per requested output, same order
      */
     public function process(Plan $plan): array;
 }

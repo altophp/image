@@ -15,7 +15,6 @@ namespace Alto\Image\Store;
 
 use Alto\Image\Image;
 use Alto\Image\ImageSet;
-use Alto\Image\Result;
 
 /**
  * The contract for locating, generating, and pruning stored derivatives.
@@ -38,12 +37,12 @@ interface StoreInterface
     /**
      * Generates one derivative when it is missing.
      */
-    public function ensureOne(Image $image): Result;
+    public function ensureOne(Image $image): string;
 
     /**
      * Generates the missing images with one decode, preserving their order.
      *
-     * @return list<Result>
+     * @return list<string>
      */
     public function ensureMany(ImageSet $images): array;
 

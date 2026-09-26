@@ -11,7 +11,7 @@ declare(strict_types=1);
  * the LICENSE file distributed with this source code.
  */
 
-namespace Alto\Image\Test;
+namespace Alto\Image\Tests\Support;
 
 /**
  * Provides a real camera EXIF segment for conformance fixtures.

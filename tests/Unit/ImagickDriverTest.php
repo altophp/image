@@ -124,9 +124,12 @@ final class ImagickDriverTest extends TestCase
 
         $invalidProfile = $this->directory . '/invalid.icc';
         file_put_contents($invalidProfile, 'not an ICC profile');
-        [$profiled, $profileNotes] = $pipeline->run($converted, [new IccConvert($invalidProfile)]);
-        self::assertSame('2x2', (string) $pipeline->size($profiled));
-        self::assertNotSame([], $profileNotes);
+        try {
+            $pipeline->run($converted, [new IccConvert($invalidProfile)]);
+            self::fail('An invalid ICC profile was accepted.');
+        } catch (DriverException $error) {
+            self::assertStringContainsString('failed while applying the ICC profile', $error->getMessage());
+        }
 
         $this->expectException(DriverException::class);
         $this->expectExceptionMessage('returned string');
@@ -155,12 +158,6 @@ final class ImagickDriverTest extends TestCase
         $policy->invoke($driver, $withoutProfile, MetadataPolicy::ColourProfile);
         self::assertSame([], $withoutProfile->getImageProfiles('icc', true));
 
-        $copyrighted = $this->image(2, 2);
-        $copyrighted->setImageProperty('exif:Artist', 'Simon Andre');
-        $copyrighted->setImageProperty('comment', 'private');
-        $policy->invoke($driver, $copyrighted, MetadataPolicy::Copyright);
-        self::assertSame('Simon Andre', $copyrighted->getImageProperty('exif:Artist'));
-        self::assertFalse($copyrighted->getImageProperty('comment'));
     }
 
     public function testTooSmallDetectsAnInsufficientDecodeHint(): void
@@ -196,22 +193,25 @@ final class ImagickDriverTest extends TestCase
 
     public function testApproximateEncodingIsReportedByARealRender(): void
     {
-        $result = Image::open(Source::bytes($this->image(4, 3)->getImagesBlob()))
+        $source = Source::bytes($this->image(4, 3)->getImagesBlob());
+        $result = Image::open($source)
             ->using(new ImagickDriver())
             ->encode(Format::Jpeg, effort: Effort::Best)
-            ->render();
+            ->bytes();
 
-        self::assertSame(Format::Jpeg, $result->format());
-        self::assertFalse($result->isExact());
-        self::assertStringContainsString('could not honour every encoding option', implode(' ', $result->degradations));
+        self::assertSame(Support::Approximate, (new ImagickDriver())->canEncode(
+            new Encoding(Format::Jpeg, effort: Effort::Best),
+            $source->metadata(),
+        ));
+        self::assertSame(Format::Jpeg, Source::bytes($result)->metadata()->format);
     }
 
     public function testKeepMetadataAndAnimationDecodeUseTheirDedicatedPaths(): void
     {
         $driver = new ImagickDriver();
         $source = $this->image(4, 3)->getImagesBlob();
-        $kept = Image::open(Source::bytes($source))->using($driver)->blur()->encode(Format::Png, metadata: MetadataPolicy::Keep)->render();
-        self::assertSame(Format::Png, $kept->format());
+        $kept = Image::open(Source::bytes($source))->using($driver)->blur()->encode(Format::Png, metadata: MetadataPolicy::Keep)->bytes();
+        self::assertSame(Format::Png, Source::bytes($kept)->metadata()->format);
 
         $animation = new \Imagick();
 
@@ -226,10 +226,10 @@ final class ImagickDriverTest extends TestCase
             ->using($driver)
             ->blur()
             ->png()
-            ->render();
+            ->bytes();
 
-        self::assertSame(Format::Png, $first->format());
-        self::assertSame('4x3', (string) $first->size());
+        self::assertSame(Format::Png, Source::bytes($first)->metadata()->format);
+        self::assertSame('4x3', (string) Source::bytes($first)->metadata()->size);
     }
 
     public function testAValidHeaderWithInvalidPixelsIsRejected(): void

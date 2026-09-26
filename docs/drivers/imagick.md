@@ -48,9 +48,9 @@ with `using()`:
 use Alto\Image\Driver\Imagick\ImagickDriver;
 use Alto\Image\Image;
 
-$result = Image::open('photo.tiff')
+$bytes = Image::open('photo.tiff')
     ->using(new ImagickDriver())
     ->fit(1200, 1200)
     ->webp()
-    ->render();
+    ->bytes();
 ```

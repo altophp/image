@@ -46,9 +46,9 @@ one request with `using()`:
 use Alto\Image\Driver\Gd\GdDriver;
 use Alto\Image\Image;
 
-$result = Image::open('photo.jpg')
+$bytes = Image::open('photo.jpg')
     ->using(new GdDriver())
     ->fit(1200, 1200)
     ->webp()
-    ->render();
+    ->bytes();
 ```

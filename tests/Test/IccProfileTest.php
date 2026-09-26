@@ -13,15 +13,13 @@ declare(strict_types=1);
 
 namespace Alto\Image\Tests\Test;
 
-use Alto\Image\Test\IccProfile;
-use Alto\Image\Tests\Support\SourceClassTestCase;
+use Alto\Image\Tests\Support\IccProfile;
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\TestCase;
 
 #[CoversNothing]
-final class IccProfileTest extends SourceClassTestCase
+final class IccProfileTest extends TestCase
 {
-    protected const string SUBJECT = IccProfile::class;
-
     public function testItProvidesTheDocumentedProfile(): void
     {
         $profile = IccProfile::displayP3();

@@ -18,7 +18,7 @@ use Alto\Image\Image;
 use Alto\Image\Internal\AtomicWriter;
 use Alto\Image\Source;
 use Alto\Image\Store\LocalStore;
-use Alto\Image\Test\ArrayDriver;
+use Alto\Image\Tests\Support\ArrayDriver;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -95,9 +95,8 @@ final class LocalStoreTest extends TestCase
         self::assertSame(1, $driver->batches(), 'The images were not rendered in one driver call.');
 
         foreach ($written as $result) {
-            self::assertNotNull($result->path);
-            self::assertFileExists($result->path);
-            self::assertSame($result->bytes, file_get_contents($result->path));
+            self::assertFileExists($result);
+            self::assertStringStartsWith('alto:fake', (string) file_get_contents($result));
         }
 
         // Second time: everything is there, so nothing reaches the driver at all.
@@ -108,9 +107,7 @@ final class LocalStoreTest extends TestCase
         self::assertSame(0, $driver->batches(), 'A second ensure() reached the driver.');
         self::assertCount(3, $again);
 
-        foreach ($again as $result) {
-            self::assertTrue($result->copied);
-        }
+        self::assertSame($written, $again);
     }
 
     public function testImagesAndImageSetsStoreThemselves(): void
@@ -119,14 +116,14 @@ final class LocalStoreTest extends TestCase
         $store = new LocalStore($this->root);
         $image = Image::open($this->source())->using($driver)->cover(320, 180)->webp();
 
-        self::assertNotNull($image->store($store)->path);
+        self::assertFileExists($image->store($store));
 
         $images = $image->widths(160, 320);
         $results = $images->store($store);
 
         self::assertCount(2, $results);
-        self::assertNotNull($results[0]->path);
-        self::assertNotNull($results[1]->path);
+        self::assertFileExists($results[0]);
+        self::assertFileExists($results[1]);
     }
 
     public function testAPathIsTheLocalStoreShortcutForImagesAndImageSets(): void
@@ -138,14 +135,13 @@ final class LocalStoreTest extends TestCase
         $one = $image->store($root);
         $many = $image->widths(160, 320)->store($root);
 
-        self::assertNotNull($one->path);
-        self::assertStringStartsWith($root . '/', $one->path);
+        self::assertStringStartsWith($root . '/', $one);
+        self::assertFileExists($one);
         self::assertCount(2, $many);
 
         foreach ($many as $result) {
-            self::assertNotNull($result->path);
-            self::assertStringStartsWith($root . '/', $result->path);
-            self::assertFileExists($result->path);
+            self::assertStringStartsWith($root . '/', $result);
+            self::assertFileExists($result);
         }
     }
 
@@ -169,16 +165,17 @@ final class LocalStoreTest extends TestCase
     public function testEnsureKeepsTheOrderTheImageAsksFor(): void
     {
         $store = new LocalStore($this->root);
+        $driver = new ArrayDriver();
         $hero = Image::open($this->source('a'))
-            ->using(new ArrayDriver())
+            ->using($driver)
             ->cover(ratio: 16 / 9)
             ->widths(320, 640)
             ->formats(\Alto\Image\Format::Webp, \Alto\Image\Format::Avif);
 
-        self::assertSame(
-            ['320x180', '320x180', '640x360', '640x360'],
-            array_map(static fn($r): string => (string) $r->size(), $store->ensureMany($hero)),
-        );
+        $paths = $store->ensureMany($hero);
+
+        self::assertSame(array_map($store->path(...), $hero->images()), $paths);
+        self::assertSame(['320x180', '320x180', '640x360', '640x360'], $driver->outputs());
     }
 
     /**
@@ -205,17 +202,17 @@ final class LocalStoreTest extends TestCase
         $store = new LocalStore($this->root, static fn(string $key, \Closure $work): mixed => null);
 
         $this->expectException(StoreException::class);
-        $this->expectExceptionMessage('The critical section returned null');
+        $this->expectExceptionMessage('must return the list of paths');
 
         $store->ensureOne(Image::open($this->source())->using(new ArrayDriver())->cover(320, 180)->webp());
     }
 
-    public function testACriticalSectionMustReturnOnlyResults(): void
+    public function testACriticalSectionMustReturnOnlyStringPaths(): void
     {
-        $store = new LocalStore($this->root, static fn(string $key, \Closure $work): array => ['not a result']);
+        $store = new LocalStore($this->root, static fn(string $key, \Closure $work): array => [new \stdClass()]);
 
         $this->expectException(StoreException::class);
-        $this->expectExceptionMessage('not a list of Results');
+        $this->expectExceptionMessage('list of string paths');
 
         $store->ensureOne(Image::open($this->source())->using(new ArrayDriver())->cover(320, 180)->webp());
     }

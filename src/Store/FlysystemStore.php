@@ -16,7 +16,6 @@ namespace Alto\Image\Store;
 use Alto\Image\Exception\StoreException;
 use Alto\Image\Image;
 use Alto\Image\ImageSet;
-use Alto\Image\Result;
 use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\StorageAttributes;
@@ -70,7 +69,7 @@ final readonly class FlysystemStore implements StoreInterface
         }
     }
 
-    public function ensureOne(Image $image): Result
+    public function ensureOne(Image $image): string
     {
         return $this->ensure(ImageSet::of($image))[0];
     }
@@ -81,9 +80,35 @@ final readonly class FlysystemStore implements StoreInterface
     }
 
     /**
-     * @return list<Result>
+     * @return list<string>
      */
     private function ensure(ImageSet $images): array
+    {
+        $work = fn(): array => $this->ensureUnlocked($images);
+        $first = $images->images()[0];
+        $first->sourceMetadata();
+        $key = 'alto-image-' . $first->source()->signature();
+        $paths = null === $this->criticalSection ? $work() : ($this->criticalSection)($key, $work);
+
+        if (!\is_array($paths) || !array_is_list($paths) || \count($paths) !== $images->count()) {
+            throw new StoreException('The critical section must return the list of paths produced by its closure.');
+        }
+
+        foreach ($paths as $path) {
+            if (!\is_string($path)) {
+                throw new StoreException('The critical section must return a list of string paths.');
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
+     * Rechecks cached outputs and publishes missing files while holding the lock.
+     *
+     * @return list<string>
+     */
+    private function ensureUnlocked(ImageSet $images): array
     {
         $singles = $images->images();
         $results = [];
@@ -93,7 +118,7 @@ final readonly class FlysystemStore implements StoreInterface
             $path = $this->path($one);
 
             if ($this->exists($path)) {
-                $results[$offset] = $this->existing($one, $path);
+                $results[$offset] = $path;
 
                 continue;
             }
@@ -139,7 +164,7 @@ final readonly class FlysystemStore implements StoreInterface
     /**
      * @param array<int, string> $missing
      *
-     * @return array<int, Result>
+     * @return array<int, string>
      */
     private function generate(ImageSet $images, array $missing): array
     {
@@ -149,59 +174,25 @@ final readonly class FlysystemStore implements StoreInterface
 
         $offsets = array_keys($missing);
         $subset = $images->select(...$offsets);
-        $work = static fn(): array => $subset->render();
-        $key = 'alto-image-' . hash('xxh128', implode("\0", $missing));
-        $rendered = null === $this->criticalSection ? $work() : ($this->criticalSection)($key, $work);
-
-        if (!\is_array($rendered) || \count($rendered) !== \count($missing)) {
-            throw new StoreException(\sprintf(
-                'The critical section returned %s instead of the %d results the closure it was given produces.',
-                get_debug_type($rendered),
-                \count($missing),
-            ));
-        }
-
+        $rendered = $subset->bytes();
         $results = [];
 
         foreach (array_values($rendered) as $at => $result) {
-            if (!$result instanceof Result) {
-                throw new StoreException('The critical section returned something that is not a list of Results.');
-            }
-
             $path = $missing[$offsets[$at]];
 
             try {
-                $this->filesystem->write($path, $result->bytes, [
-                    'mimetype' => $result->metadata->format->mime(),
+                $this->filesystem->write($path, $result, [
+                    'mimetype' => $subset->images()[$at]->metadata()->format->mime(),
                     'visibility' => 'public',
                 ]);
             } catch (FilesystemException $error) {
                 throw new StoreException(\sprintf('Could not write "%s": %s', $path, $error->getMessage()), 0, $error);
             }
 
-            $results[$offsets[$at]] = $result->withPath($path);
+            $results[$offsets[$at]] = $path;
         }
 
         return $results;
-    }
-
-    private function existing(Image $image, string $path): Result
-    {
-        try {
-            $bytes = $this->filesystem->read($path);
-        } catch (FilesystemException $error) {
-            throw new StoreException(\sprintf('Could not read "%s": %s', $path, $error->getMessage()), 0, $error);
-        }
-
-        return new Result(
-            $image->metadata()->with(bytes: \strlen($bytes)),
-            $bytes,
-            'store',
-            [],
-            0.0,
-            $path,
-            true,
-        );
     }
 
     private function exists(string $path): bool

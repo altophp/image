@@ -18,7 +18,6 @@ use Alto\Image\Exception\StoreException;
 use Alto\Image\Image;
 use Alto\Image\ImageSet;
 use Alto\Image\Internal\AtomicWriter;
-use Alto\Image\Result;
 
 /**
  * A signature-keyed local derivative store with atomic writes.
@@ -78,7 +77,7 @@ final readonly class LocalStore implements StoreInterface
         return is_file($this->path($image));
     }
 
-    public function ensureOne(Image $image): Result
+    public function ensureOne(Image $image): string
     {
         return $this->ensure(ImageSet::of($image))[0];
     }
@@ -89,9 +88,35 @@ final readonly class LocalStore implements StoreInterface
     }
 
     /**
-     * @return list<Result>
+     * @return list<string>
      */
     private function ensure(ImageSet $images): array
+    {
+        $work = fn(): array => $this->ensureUnlocked($images);
+        $first = $images->images()[0];
+        $first->sourceMetadata();
+        $key = 'alto-image-' . $first->source()->signature();
+        $paths = null === $this->criticalSection ? $work() : ($this->criticalSection)($key, $work);
+
+        if (!\is_array($paths) || !array_is_list($paths) || \count($paths) !== $images->count()) {
+            throw new StoreException('The critical section must return the list of paths produced by its closure.');
+        }
+
+        foreach ($paths as $path) {
+            if (!\is_string($path)) {
+                throw new StoreException('The critical section must return a list of string paths.');
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
+     * Rechecks cached outputs and publishes missing files while holding the lock.
+     *
+     * @return list<string>
+     */
+    private function ensureUnlocked(ImageSet $images): array
     {
         $singles = $images->images();
         $results = [];
@@ -101,7 +126,7 @@ final readonly class LocalStore implements StoreInterface
             $path = $this->path($one);
 
             if (is_file($path)) {
-                $results[$offset] = $this->existing($one, $path);
+                $results[$offset] = $path;
 
                 continue;
             }
@@ -158,7 +183,7 @@ final readonly class LocalStore implements StoreInterface
      *
      * @param array<int, string> $missing spec offset to destination path
      *
-     * @return array<int, Result>
+     * @return array<int, string>
      */
     private function generate(ImageSet $images, array $missing): array
     {
@@ -168,59 +193,17 @@ final readonly class LocalStore implements StoreInterface
 
         $offsets = array_keys($missing);
         $subset = $images->select(...$offsets);
-        $work = static fn(): array => $subset->render();
-        $key = 'alto-image-' . hash('xxh128', implode("\0", $missing));
-        $rendered = null === $this->criticalSection ? $work() : ($this->criticalSection)($key, $work);
-
-        if (!\is_array($rendered) || \count($rendered) !== \count($missing)) {
-            throw new StoreException(\sprintf(
-                'The critical section returned %s instead of the %d results the closure it was given produces.',
-                get_debug_type($rendered),
-                \count($missing),
-            ));
-        }
-
+        $rendered = $subset->bytes();
         $results = [];
 
         foreach (array_values($rendered) as $at => $result) {
-            if (!$result instanceof Result) {
-                throw new StoreException('The critical section returned something that is not a list of Results.');
-            }
-
             $path = $missing[$offsets[$at]];
 
-            // Another process may have finished the same derivative in the
-            // meantime. Writing anyway is harmless: the rename is atomic and both
-            // processes produced the same bytes from the same signature.
-            AtomicWriter::write($path, $result->bytes);
-            $results[$offsets[$at]] = $result->withPath($path);
+            AtomicWriter::write($path, $result);
+            $results[$offsets[$at]] = $path;
         }
 
         return $results;
-    }
-
-    /**
-     * What to report for a derivative that was already there.
-     */
-    private function existing(Image $image, string $path): Result
-    {
-        $bytes = @file_get_contents($path);
-
-        if (false === $bytes) {
-            // @codeCoverageIgnoreStart
-            throw StoreException::notWritable($path, 'read the derivative at');
-            // @codeCoverageIgnoreEnd
-        }
-
-        return new Result(
-            $image->metadata()->with(bytes: \strlen($bytes)),
-            $bytes,
-            'store',
-            [],
-            0.0,
-            $path,
-            true,
-        );
     }
 
     /**

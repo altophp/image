@@ -7,11 +7,11 @@ one request with `using()`:
 use Alto\Image\Driver\Gd\GdDriver;
 use Alto\Image\Image;
 
-$result = Image::open('photo.jpg')
+$bytes = Image::open('photo.jpg')
     ->using(new GdDriver())
     ->fit(1200, 1200)
     ->webp()
-    ->render();
+    ->bytes();
 ```
 
 Run `vendor/bin/image doctor` for the formats and delegates available on the
@@ -44,7 +44,7 @@ Drivers answer each concrete request with one of three levels:
 - `Approximate`: performed with a documented degradation.
 - `No`: refused during negotiation.
 
-When work is approximate, `Result::$degradations` explains the difference.
+Inspect `$image->plan()->degradations` for negotiated driver approximations.
 Negotiation fails before decoding when no driver can perform the request.
 
 ## Third-party drivers

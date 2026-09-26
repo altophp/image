@@ -18,13 +18,12 @@ use Alto\Image\Format;
 use Alto\Image\Image;
 use Alto\Image\Source;
 use Alto\Image\Store\FlysystemStore;
-use Alto\Image\Test\ArrayDriver;
+use Alto\Image\Tests\Support\ArrayDriver;
 use League\Flysystem\Filesystem;
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 use League\Flysystem\UnableToCheckFileExistence;
 use League\Flysystem\UnableToListContents;
-use League\Flysystem\UnableToReadFile;
 use League\Flysystem\UnableToWriteFile;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -76,9 +75,7 @@ final class FlysystemStoreTest extends TestCase
         $existing = $store->ensureMany($images);
 
         self::assertSame(0, $driver->batches());
-        self::assertTrue($existing[0]->copied);
-        self::assertTrue($existing[1]->copied);
-        self::assertSame($written[0]->bytes, $existing[0]->bytes);
+        self::assertSame($written, $existing);
     }
 
     public function testACriticalSectionReceivesOneStableBatchKey(): void
@@ -103,18 +100,18 @@ final class FlysystemStoreTest extends TestCase
         $store = new FlysystemStore($filesystem, criticalSection: static fn(string $key, \Closure $work): mixed => null);
 
         $this->expectException(StoreException::class);
-        $this->expectExceptionMessage('returned null');
+        $this->expectExceptionMessage('must return the list of paths');
 
         $store->ensureOne(Image::open($this->source())->using(new ArrayDriver())->webp());
     }
 
-    public function testACriticalSectionMustReturnResults(): void
+    public function testACriticalSectionMustReturnStringPaths(): void
     {
         $filesystem = new Filesystem(new LocalFilesystemAdapter($this->root));
         $store = new FlysystemStore($filesystem, criticalSection: static fn(string $key, \Closure $work): array => [new \stdClass()]);
 
         $this->expectException(StoreException::class);
-        $this->expectExceptionMessage('not a list of Results');
+        $this->expectExceptionMessage('list of string paths');
 
         $store->ensureOne(Image::open($this->source())->using(new ArrayDriver())->webp());
     }
@@ -153,16 +150,18 @@ final class FlysystemStoreTest extends TestCase
         $store->ensureOne(Image::open($this->source())->using(new ArrayDriver())->webp());
     }
 
-    public function testEnsureTranslatesReadFailures(): void
+    public function testACachedPathDoesNotReadTheDerivative(): void
     {
         $filesystem = $this->createMock(FilesystemOperator::class);
         $filesystem->expects(self::once())->method('fileExists')->willReturn(true);
-        $filesystem->expects(self::once())->method('read')->willThrowException(UnableToReadFile::fromLocation('x', 'denied'));
+        $filesystem->expects(self::never())->method('read');
+        $filesystem->expects(self::never())->method('write');
         $store = new FlysystemStore($filesystem);
+        $driver = new ArrayDriver();
+        $image = Image::open($this->source())->using($driver)->webp();
 
-        $this->expectException(StoreException::class);
-        $this->expectExceptionMessage('Could not read');
-        $store->ensureOne(Image::open($this->source())->webp());
+        self::assertSame($store->path($image), $store->ensureOne($image));
+        self::assertSame(0, $driver->batches());
     }
 
     public function testPruneTranslatesListingFailures(): void

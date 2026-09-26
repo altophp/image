@@ -15,17 +15,15 @@ namespace Alto\Image\Tests\Test;
 
 use Alto\Image\Format;
 use Alto\Image\Source;
-use Alto\Image\Test\Corpus;
-use Alto\Image\Test\DeviceExif;
-use Alto\Image\Test\IccProfile;
-use Alto\Image\Tests\Support\SourceClassTestCase;
+use Alto\Image\Tests\Support\Corpus;
+use Alto\Image\Tests\Support\DeviceExif;
+use Alto\Image\Tests\Support\IccProfile;
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\TestCase;
 
 #[CoversNothing]
-final class CorpusTest extends SourceClassTestCase
+final class CorpusTest extends TestCase
 {
-    protected const string SUBJECT = Corpus::class;
-
     public function testTheInterlacedFixtureHasReadableMetadata(): void
     {
         $metadata = Source::file(Corpus::shared()->path('interlaced.png'))->metadata();

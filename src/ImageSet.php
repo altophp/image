@@ -94,9 +94,9 @@ final readonly class ImageSet extends AbstractImage implements \Countable, \Iter
     }
 
     /**
-     * @return list<Result>
+     * @return list<string>
      */
-    public function render(): array
+    public function bytes(): array
     {
         $plan = $this->plan();
 
@@ -104,7 +104,7 @@ final readonly class ImageSet extends AbstractImage implements \Countable, \Iter
     }
 
     /**
-     * @return list<Result>
+     * @return list<string>
      */
     public function store(string|StoreInterface $store): array
     {

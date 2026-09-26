@@ -236,14 +236,8 @@ final class Cli
         $this->pair('source', $source . '  ' . $image->sourceMetadata());
         $this->pair('projected', (string) $image->size());
 
-        $result = $image->save($destination);
-
-        $this->pair('driver', $result->driver);
-        $this->pair('written', $destination . '  ' . $result);
-
-        foreach ($result->degradations as $degradation) {
-            $this->line('  ' . $this->paint(self::WARN, $degradation));
-        }
+        $image->save($destination);
+        $this->pair('written', $destination);
 
         $this->line('');
 

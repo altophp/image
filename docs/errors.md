@@ -11,7 +11,7 @@ use Alto\Image\Image;
 $image = Image::open($path)->fit(1600, 1600)->webp();
 
 try {
-    $result = $image->render();
+    $bytes = $image->bytes();
 } catch (ImageExceptionInterface $error) {
     // Report an image-processing failure to the application boundary.
 }
