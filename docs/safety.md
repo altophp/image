@@ -67,6 +67,11 @@ $image = Image::open($upload)
 
 Use `Limits::none()` only for sources produced and trusted by the application.
 
+Strict output limits also apply before each built-in transform, using the current
+raster dimensions. Imagick rotation includes a two-pixel per-axis allowance for
+the temporary native canvas. A later crop cannot hide an oversized intermediate
+image. Trusted `escape()` callbacks remain responsible for their own allocations.
+
 ## Untrusted input
 
 - Resolve user-controlled source paths against an allowed directory.

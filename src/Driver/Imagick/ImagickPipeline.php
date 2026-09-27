@@ -16,7 +16,10 @@ namespace Alto\Image\Driver\Imagick;
 use Alto\Image\Colour;
 use Alto\Image\Exception\DriverException;
 use Alto\Image\Focus;
+use Alto\Image\Format;
 use Alto\Image\Internal\Window;
+use Alto\Image\Limits;
+use Alto\Image\Metadata;
 use Alto\Image\Operation\Adjust;
 use Alto\Image\Operation\Blur;
 use Alto\Image\Operation\Crop;
@@ -32,6 +35,7 @@ use Alto\Image\Operation\Orient;
 use Alto\Image\Operation\Overlay;
 use Alto\Image\Operation\Pixelate;
 use Alto\Image\Operation\Placement;
+use Alto\Image\Operation\PortableOperationInterface;
 use Alto\Image\Operation\Resize;
 use Alto\Image\Operation\Rotate;
 use Alto\Image\Operation\Sharpen;
@@ -56,11 +60,20 @@ final class ImagickPipeline
      *
      * @return array{\Imagick, list<string>}
      */
-    public function run(\Imagick $image, array $operations): array
+    public function run(\Imagick $image, array $operations, Limits $limits = new Limits()): array
     {
         $degradations = [];
 
         foreach ($operations as $operation) {
+            if ($operation instanceof PortableOperationInterface) {
+                $projected = $operation->project(new Metadata($this->size($image), Format::Png));
+                if ($operation instanceof Rotate && !$operation->isQuarterTurn()) {
+                    // Native rotation can add two pixels per axis before conform().
+                    $projected = $projected->with(size: new Size($projected->size->width + 2, $projected->size->height + 2));
+                }
+                $limits->checkOutput($projected, 'intermediate ' . $operation::class);
+            }
+
             // Solved against the raster that exists, for the same reason GdPipeline does.
             $placement = $operation instanceof Solvable ? $operation->solve($this->size($image)) : null;
 

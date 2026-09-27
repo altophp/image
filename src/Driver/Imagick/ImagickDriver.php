@@ -200,7 +200,7 @@ final class ImagickDriver implements DriverInterface
                 $image = $first;
             }
 
-            [$image, $notes] = $this->transform($image, $plan->operations($index));
+            [$image, $notes] = $this->transform($image, $plan->operations($index), $plan->limits);
             $degradations = [...$plan->degradations, ...$notes];
             $actual = $this->pipeline->size($image);
 
@@ -313,10 +313,10 @@ final class ImagickDriver implements DriverInterface
      *
      * @return array{\Imagick, list<string>}
      */
-    private function transform(\Imagick $image, array $operations): array
+    private function transform(\Imagick $image, array $operations, Limits $limits): array
     {
         if ($image->getNumberImages() <= 1) {
-            return $this->pipeline->run($image, $operations);
+            return $this->pipeline->run($image, $operations, $limits);
         }
 
         $sequence = new \Imagick();
@@ -328,7 +328,7 @@ final class ImagickDriver implements DriverInterface
             $dispose = $source->getImageDispose();
             $ticks = $source->getImageTicksPerSecond();
             $frame = $source->getImage();
-            [$frame, $frameNotes] = $this->pipeline->run($frame, $operations);
+            [$frame, $frameNotes] = $this->pipeline->run($frame, $operations, $limits);
             $frame->setImageDelay($delay);
             $frame->setImageDispose($dispose);
             $frame->setImageTicksPerSecond($ticks);
