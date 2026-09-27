@@ -16,7 +16,6 @@ namespace Alto\Image\Tests\Driver;
 use Alto\Image\Driver\Imagick\ImagickDriver;
 use Alto\Image\Driver\Imagick\ResourcePolicy;
 use Alto\Image\Exception\CorruptImageException;
-use Alto\Image\Exception\ImageExceptionInterface;
 use Alto\Image\Exception\LimitExceededException;
 use Alto\Image\Image;
 use Alto\Image\Limits;
@@ -74,7 +73,8 @@ final class AnimationLimitsTest extends TestCase
         $decoded->clear();
     }
 
-    public function testFailedAndSuccessfulRequestsRestoreTheNativeFrameLimit(): void
+    #[DataProvider('frameLimits')]
+    public function testFailedAndSuccessfulRequestsRestoreTheNativeFrameLimit(int $maximum): void
     {
         $bytes = $this->sequence('gif');
         if (!defined(\Imagick::class . '::RESOURCETYPE_LISTLENGTH')) {
@@ -83,17 +83,25 @@ final class AnimationLimitsTest extends TestCase
         $previous = \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_LISTLENGTH);
         $image = Image::open(Source::bytes($bytes))->using(new ImagickDriver());
         try {
-            $image->within(new Limits(maxFrames: 2))->render();
-            self::fail('An excessive sequence was accepted.');
-        } catch (ImageExceptionInterface) {
-            self::assertSame($previous, \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_LISTLENGTH));
+            $image->within(new Limits(maxFrames: $maximum))->render();
+            self::assertSame(3, $maximum);
+        } catch (LimitExceededException) {
+            self::assertSame(2, $maximum);
         }
-        $image->within(new Limits(maxFrames: 3))->render();
         self::assertSame($previous, \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_LISTLENGTH));
         $direct = new \Imagick();
         $direct->readImageBlob($bytes);
         self::assertSame(3, $direct->getNumberImages());
         $direct->clear();
+    }
+
+    /**
+     * @return iterable<array{int}>
+     */
+    public static function frameLimits(): iterable
+    {
+        yield [2];
+        yield [3];
     }
 
     /**
