@@ -21,6 +21,7 @@ use Alto\Image\Driver\Support;
 use Alto\Image\Effort;
 use Alto\Image\Exception\CorruptImageException;
 use Alto\Image\Exception\DriverException;
+use Alto\Image\Exception\LimitExceededException;
 use Alto\Image\Format;
 use Alto\Image\Internal\QualitySearch;
 use Alto\Image\Limits;
@@ -151,6 +152,25 @@ final class ImagickDriver implements DriverInterface
 
     public function process(Plan $plan): array
     {
+        return ResourcePolicy::withFrameLimit($plan->limits, fn(): array => $this->processWithinFrameLimit($plan));
+    }
+
+    /**
+     * @return list<Result>
+     */
+    private function processWithinFrameLimit(Plan $plan): array
+    {
+        $probe = new \Imagick();
+
+        try {
+            $probe->pingImageBlob($plan->source->contents());
+            $this->checkFrames($probe, $plan);
+        } catch (\ImagickException $error) {
+            $this->throwReadError($plan, $error);
+        } finally {
+            $probe->clear();
+        }
+
         $started = microtime(true);
         $master = null;
         $results = [];
@@ -263,6 +283,15 @@ final class ImagickDriver implements DriverInterface
         );
     }
 
+    private function checkFrames(\Imagick $image, Plan $plan): void
+    {
+        $count = $image->getNumberImages();
+
+        if ($count > $plan->limits->maxFrames) {
+            throw LimitExceededException::frames($count, $plan->limits->maxFrames, $plan->source->origin());
+        }
+    }
+
     private function decode(Plan $plan): \Imagick
     {
         ResourcePolicy::apply($plan->limits);
@@ -285,6 +314,8 @@ final class ImagickDriver implements DriverInterface
             $image = $this->read($plan, null);
             // @codeCoverageIgnoreEnd
         }
+
+        $this->checkFrames($image, $plan);
 
         // Coalescing turns frame-local rectangles into full canvases before the
         // same transform is applied to every frame.
@@ -398,23 +429,32 @@ final class ImagickDriver implements DriverInterface
         } catch (\ImagickException $error) {
             $image->clear();
 
-            // canDecode() answered optimistically to keep queryFormats() off the
-            // hot path, so this is where a build that really cannot read the
-            // format has to say so, and say where the true list is.
-            if (!$this->writesFormat($plan->input->format) && !$this->knowsFormat($plan->input->format)) {
-                throw new DriverException(\sprintf(
-                    "This ImageMagick has no coder for %s.\n"
-                    . "  Run vendor/bin/image doctor for the available formats.\n"
-                    . '  It said: %s',
-                    $plan->input->format->value,
-                    $error->getMessage(),
-                ), 0, $error);
-            }
-
-            throw CorruptImageException::unreadableHeader($plan->source->origin() . ': ' . $error->getMessage());
+            $this->throwReadError($plan, $error);
         }
 
         return $image;
+    }
+
+    private function throwReadError(Plan $plan, \ImagickException $error): never
+    {
+        if (str_contains(strtolower($error->getMessage()), 'list length exceeds limit')) {
+            throw new LimitExceededException('ImageMagick rejected the sequence at its native frame limit: ' . $error->getMessage(), 0, $error);
+        }
+
+        // canDecode() answered optimistically to keep queryFormats() off the
+        // hot path, so this is where a build that really cannot read the
+        // format has to say so, and say where the true list is.
+        if (!$this->writesFormat($plan->input->format) && !$this->knowsFormat($plan->input->format)) {
+            throw new DriverException(\sprintf(
+                "This ImageMagick has no coder for %s.\n"
+                . "  Run vendor/bin/image doctor for the available formats.\n"
+                . '  It said: %s',
+                $plan->input->format->value,
+                $error->getMessage(),
+            ), 0, $error);
+        }
+
+        throw CorruptImageException::unreadableHeader($plan->source->origin() . ': ' . $error->getMessage());
     }
 
     /**

@@ -75,6 +75,39 @@ final class ResourcePolicy
     }
 
     /**
+     * @template T
+     *
+     * @param \Closure(): T $work
+     *
+     * @return T
+     */
+    public static function withFrameLimit(Limits $limits, \Closure $work): mixed
+    {
+        $constant = self::constant('listlength');
+
+        if (null === $constant) {
+            // Unavailable on older ImageMagick builds.
+            // @codeCoverageIgnoreStart
+            return $work();
+            // @codeCoverageIgnoreEnd
+        }
+
+        // Imagick returns a float; its unlimited value rounds above PHP_INT_MAX.
+        $current = \Imagick::getResourceLimit($constant);
+        $previous = $current >= \PHP_INT_MAX ? \PHP_INT_MAX : (int) $current;
+        // The decoder needs a sentinel image after the last accepted frame.
+        $ceiling = $limits->maxFrames < \PHP_INT_MAX ? $limits->maxFrames + 1 : \PHP_INT_MAX;
+
+        try {
+            \Imagick::setResourceLimit($constant, min($previous, $ceiling));
+
+            return $work();
+        } finally {
+            \Imagick::setResourceLimit($constant, $previous);
+        }
+    }
+
+    /**
      * The limits that did not end up where they were asked to, for doctor.
      *
      * @param array<string, array{asked: int, got: int}> $applied
@@ -133,6 +166,7 @@ final class ResourcePolicy
     private static function constant(string $name): ?int
     {
         $map = [
+            'listlength' => 'RESOURCETYPE_LISTLENGTH',
             'width' => 'RESOURCETYPE_WIDTH',
             'height' => 'RESOURCETYPE_HEIGHT',
             'area' => 'RESOURCETYPE_AREA',
