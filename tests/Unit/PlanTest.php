@@ -50,7 +50,7 @@ final class PlanTest extends TestCase
         self::assertSame($driver, $plan->driver);
         self::assertSame('10x10', (string) $plan->output(0)->size);
         self::assertSame([], $plan->operations(0));
-        self::assertTrue($plan->isPassThrough(0));
+        self::assertFalse($plan->isPassThrough(0));
         self::assertCount(2, Plan::known());
         self::assertCount(
             (ImagickDriver::isAvailable() ? 1 : 0) + (GdDriver::isAvailable() ? 1 : 0),
@@ -159,7 +159,7 @@ final class PlanTest extends TestCase
         ];
 
         foreach ($outputs as $index => $output) {
-            $plan = Plan::negotiate($this->png(), [$output], candidates: [$driver]);
+            $plan = Plan::negotiate($this->png(), [$output->with(encoding: $output->encoding->with(metadata: MetadataPolicy::Keep))], candidates: [$driver]);
             self::assertSame($index >= 3, $plan->isPassThrough(0));
         }
     }

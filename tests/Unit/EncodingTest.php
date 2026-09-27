@@ -74,12 +74,12 @@ final class EncodingTest extends TestCase
      * The second half of the 342x: the geometry says the pixels are unchanged and
      * this says the bytes would be too.
      */
-    public function testASameFormatRequestWithNoQualityIsAPassThrough(): void
+    public function testASameFormatRequestOnlyCopiesWhenAllMetadataIsKept(): void
     {
         $webp = new Metadata(new Size(640, 480), Format::Webp);
 
-        self::assertTrue((new Encoding(Format::Webp))->isPassThrough($webp));
-        self::assertTrue((new Encoding())->isPassThrough($webp));
+        self::assertTrue((new Encoding(Format::Webp, metadata: MetadataPolicy::Keep))->isPassThrough($webp));
+        self::assertFalse((new Encoding())->isPassThrough($webp));
     }
 
     /**
@@ -115,10 +115,10 @@ final class EncodingTest extends TestCase
 
         self::assertFalse((new Encoding(metadata: MetadataPolicy::Strip))->isPassThrough($carrying));
         self::assertFalse((new Encoding(metadata: MetadataPolicy::Copyright))->isPassThrough($carrying));
-        self::assertTrue((new Encoding(metadata: MetadataPolicy::Strip))->isPassThrough($bare));
+        self::assertFalse((new Encoding(metadata: MetadataPolicy::Strip))->isPassThrough($bare));
         self::assertTrue((new Encoding(metadata: MetadataPolicy::Keep))->isPassThrough($carrying));
         self::assertFalse((new Encoding(metadata: MetadataPolicy::Strip))->isPassThrough($profiled));
-        self::assertTrue((new Encoding(metadata: MetadataPolicy::ColourProfile))->isPassThrough($profiled));
+        self::assertFalse((new Encoding(metadata: MetadataPolicy::ColourProfile))->isPassThrough($profiled));
     }
 
     public function testMetadataPoliciesProjectOnlyWhatTheyActuallyKeep(): void

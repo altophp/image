@@ -174,13 +174,9 @@ final readonly class Encoding implements \Stringable
             return false;
         }
 
-        if (null !== $source->icc && !$this->metadata->keepsProfile()) {
-            return false;
-        }
-
-        // Filtering tags is a rewrite. Only Keep can pass unknown metadata
-        // through byte-for-byte; Copyright must first remove everything else.
-        return !$source->hasMetadata || $this->metadata->keepsEverything();
+        // Header metadata is only a bounded sample, not proof that the complete
+        // file contains no private tags. Filtering always requires a rewrite.
+        return $this->metadata->keepsEverything();
     }
 
     public function __toString(): string
