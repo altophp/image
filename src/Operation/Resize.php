@@ -19,6 +19,7 @@ use Alto\Image\Exception\InvalidArgumentException;
 use Alto\Image\Fit;
 use Alto\Image\FocalPoint;
 use Alto\Image\Focus;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 use Alto\Image\Scaling;
 use Alto\Image\Size;
@@ -219,6 +220,8 @@ final readonly class Resize implements PortableOperationInterface, Solvable
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'box', 'g' => 'string', 's' => 'string', 'r' => 'float', 'bg' => 'string']);
+
         [$width, $height] = array_pad(explode('x', $arguments['0'] ?? ''), 2, '');
         $gravity = $arguments['g'] ?? 'center';
         $ratio = $arguments['r'] ?? null;

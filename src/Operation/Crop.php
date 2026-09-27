@@ -17,6 +17,7 @@ use Alto\Image\Anchor;
 use Alto\Image\Exception\InvalidArgumentException;
 use Alto\Image\FocalPoint;
 use Alto\Image\Focus;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 use Alto\Image\Size;
 
@@ -104,6 +105,8 @@ final readonly class Crop implements PortableOperationInterface, Solvable
         if ('' === $width || '' === $height) {
             throw new InvalidArgumentException(\sprintf('Crop reads as "crop=<width>x<height>", got "crop=%s".', $arguments['0'] ?? ''));
         }
+
+        Arguments::check($arguments, [0 => 'size', 'g' => 'string', 'x' => 'int', 'y' => 'int']);
 
         $gravity = $arguments['g'] ?? 'center';
 

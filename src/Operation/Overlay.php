@@ -15,6 +15,7 @@ namespace Alto\Image\Operation;
 
 use Alto\Image\Anchor;
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Internal\Fingerprint;
 use Alto\Image\Metadata;
 
@@ -82,6 +83,8 @@ final readonly class Overlay implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'string', 'g' => 'string', 'o' => 'float', 'm' => 'int']);
+
         return new self(
             rawurldecode($arguments['0'] ?? ''),
             Anchor::from($arguments['g'] ?? 'bottom-right'),

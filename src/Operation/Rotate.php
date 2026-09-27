@@ -15,6 +15,7 @@ namespace Alto\Image\Operation;
 
 use Alto\Image\Colour;
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 use Alto\Image\Size;
 
@@ -80,6 +81,8 @@ final readonly class Rotate implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'float', 'bg' => 'string']);
+
         return new self(
             (float) ($arguments['0'] ?? '0'),
             Colour::parse($arguments['bg'] ?? 'transparent'),

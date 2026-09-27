@@ -402,4 +402,64 @@ final class TransformTest extends TestCase
             self::assertContains($name, $names, \sprintf('"%s" is not in the default map.', $name));
         }
     }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function malformedArguments(): iterable
+    {
+        foreach ([
+            'rotate=oops',
+            'rotate=90,typo:42',
+            'rotate=1e999',
+            'blur=oops',
+            'sharpen=1,a:bad',
+            'adjust=b:bad',
+            'pixelate=3.5',
+            'trim=bad',
+            'extend=t:bad',
+            'crop=10oopsx20',
+            'crop=10x20,x:bad',
+            'cover=20x10oops',
+            'inside=10x20x30',
+            'cover=r:bad',
+            'overlay=logo.png,o:bad',
+            'tint=red,o:bad',
+            'flip=h,unknown:1',
+            'grayscale=1',
+            'invert=1',
+            'orient=1',
+            'icc=srgb,typo:1',
+            'flatten=red,typo:1',
+        ] as $text) {
+            yield $text => [$text];
+        }
+    }
+
+    #[DataProvider('malformedArguments')]
+    public function testMalformedOperationArgumentsAreRejected(string $text): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        Transform::parse($text);
+    }
+
+    public function testDuplicateNamedArgumentsAreRejectedInsteadOfSilentlyOverwriting(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Duplicate argument "bg" in "rotate=90,bg:red,bg:blue"');
+
+        Transform::parse('rotate=90,bg:red,bg:blue');
+    }
+
+    public function testNativeEnumErrorsAreNormalisedToThePackageException(): void
+    {
+        try {
+            Transform::parse('cover=10x10,s:nowhere');
+            self::fail('An invalid scaling policy was accepted.');
+        } catch (InvalidArgumentException $error) {
+            self::assertStringContainsString('Invalid arguments in "cover=10x10,s:nowhere"', $error->getMessage());
+            self::assertInstanceOf(\ValueError::class, $error->getPrevious());
+        }
+    }
 }

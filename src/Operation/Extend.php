@@ -15,6 +15,7 @@ namespace Alto\Image\Operation;
 
 use Alto\Image\Colour;
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 use Alto\Image\Size;
 
@@ -93,6 +94,8 @@ final readonly class Extend implements PortableOperationInterface, Solvable
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'int', 't' => 'int', 'r' => 'int', 'b' => 'int', 'l' => 'int', 'bg' => 'string']);
+
         $all = (int) ($arguments['0'] ?? '0');
 
         return new self(

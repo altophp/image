@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Alto\Image\Operation;
 
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Metadata;
 
 /**
@@ -34,6 +35,8 @@ final readonly class Invert implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, []);
+
         return new self();
     }
 }

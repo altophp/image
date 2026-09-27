@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Alto\Image\Operation;
 
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Internal\Arguments;
 use Alto\Image\Internal\Fingerprint;
 use Alto\Image\Metadata;
 
@@ -64,6 +65,8 @@ final readonly class IccConvert implements PortableOperationInterface
 
     public static function parse(array $arguments): static
     {
+        Arguments::check($arguments, [0 => 'string']);
+
         return new self(rawurldecode($arguments['0'] ?? 'srgb'));
     }
 }
