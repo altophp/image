@@ -36,15 +36,7 @@ final readonly class Raster
         public int $height,
         public array $pixels,
     ) {
-        if ($width < 1 || $height < 1 || $width > self::MAX || $height > self::MAX) {
-            throw new InvalidArgumentException(\sprintf(
-                'A raster is between 1x1 and %dx%d, got %dx%d. The cap is what keeps analyzers naive and free.',
-                self::MAX,
-                self::MAX,
-                $width,
-                $height,
-            ));
-        }
+        self::checkDimensions($width, $height);
 
         if (\count($pixels) !== $width * $height) {
             throw new InvalidArgumentException(\sprintf(
@@ -111,12 +103,19 @@ final readonly class Raster
             throw new InvalidArgumentException(\sprintf('A raster reads 24 or 32 bit BMPs, got %d.', $header['bpp']));
         }
 
-        $width = abs($header['width']);
+        $width = $header['width'];
         // A negative height means the rows are already top-down.
         $topDown = $header['height'] < 0;
         $height = abs($header['height']);
+        self::checkDimensions($width, $height);
+
         $step = intdiv($header['bpp'], 8);
         $stride = intdiv($header['bpp'] * $width + 31, 32) * 4;
+        if ($header['offset'] < 54 || $header['offset'] > \strlen($bytes)
+            || $stride * $height > \strlen($bytes) - $header['offset']) {
+            throw new InvalidArgumentException('This BMP has incomplete or overlapping pixel data.');
+        }
+
         $pixels = [];
 
         for ($y = 0; $y < $height; ++$y) {
@@ -136,6 +135,19 @@ final readonly class Raster
         }
 
         return self::opaqueIfUnused(new self($width, $height, $pixels));
+    }
+
+    private static function checkDimensions(int $width, int $height): void
+    {
+        if ($width < 1 || $height < 1 || $width > self::MAX || $height > self::MAX) {
+            throw new InvalidArgumentException(\sprintf(
+                'A raster is between 1x1 and %dx%d, got %dx%d. The cap is what keeps analyzers naive and free.',
+                self::MAX,
+                self::MAX,
+                $width,
+                $height,
+            ));
+        }
     }
 
     public function at(int $x, int $y): int
