@@ -71,8 +71,6 @@ final class GdPipeline
 
         foreach ($operations as $operation) {
             if ($operation instanceof PortableOperationInterface) {
-                // Use actual dimensions: Trim and trusted callbacks can change
-                // the geometry that the header-only plan could only estimate.
                 $projected = $operation->project(new Metadata($this->size($image), Format::Png));
                 $limits->checkOutput($projected, 'intermediate ' . $operation::class);
             }
