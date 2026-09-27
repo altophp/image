@@ -32,6 +32,12 @@ driver reports any approximation in `Result::$degradations`.
 pixels to a named profile; it is a separate operation and requires LCMS support
 in Imagick.
 
+Metadata filtering always re-encodes, even when geometry is unchanged: a header
+sample cannot prove that private tags are absent later in the file. Explicit
+`keepMetadata()` still permits byte-for-byte copies when all other settings are
+unchanged. Re-encoding may recompress lossy formats; GD cannot retain ICC profiles
+or multiple animation frames. Use Imagick when those need to survive filtering.
+
 ## Input and output limits
 
 The default `Limits` policy is:
