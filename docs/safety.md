@@ -51,6 +51,11 @@ The default `Limits` policy is:
 | Truncated input | reject |
 | Projected output checks | enabled |
 
+Imagick checks the actual sequence length with a metadata probe before decoding
+pixels, and again before coalescing frames. Where available, its native list-length
+limit also bounds decoding and is restored after each request. Host decoder policies
+still govern the cost of probing compressed formats and external delegates.
+
 Apply stricter limits to a request when needed:
 
 ```php
