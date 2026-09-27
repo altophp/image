@@ -174,8 +174,6 @@ final readonly class Encoding implements \Stringable
             return false;
         }
 
-        // Header metadata is only a bounded sample, not proof that the complete
-        // file contains no private tags. Filtering always requires a rewrite.
         return $this->metadata->keepsEverything();
     }
 
