@@ -184,7 +184,7 @@ final class GdDriver implements DriverInterface
 
         // The pipeline preserves the shared master until an operation either
         // detaches into a new raster or genuinely needs a private copy.
-        [$image, $degradations] = $this->pipeline->run($master, $plan->operations($index), !$isLast);
+        [$image, $degradations] = $this->pipeline->run($master, $plan->operations($index), !$isLast, $plan->limits);
         $degradations = [...$plan->degradations, ...$degradations];
 
         $actual = new Size(imagesx($image), imagesy($image));

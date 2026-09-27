@@ -16,7 +16,10 @@ namespace Alto\Image\Driver\Gd;
 use Alto\Image\Colour;
 use Alto\Image\Exception\DriverException;
 use Alto\Image\Focus;
+use Alto\Image\Format;
 use Alto\Image\Internal\Window;
+use Alto\Image\Limits;
+use Alto\Image\Metadata;
 use Alto\Image\Operation\Adjust;
 use Alto\Image\Operation\Blur;
 use Alto\Image\Operation\Crop;
@@ -31,6 +34,7 @@ use Alto\Image\Operation\Orient;
 use Alto\Image\Operation\Overlay;
 use Alto\Image\Operation\Pixelate;
 use Alto\Image\Operation\Placement;
+use Alto\Image\Operation\PortableOperationInterface;
 use Alto\Image\Operation\Resize;
 use Alto\Image\Operation\Rotate;
 use Alto\Image\Operation\Sharpen;
@@ -60,12 +64,19 @@ final class GdPipeline
      *
      * @return array{\GdImage, list<string>}
      */
-    public function run(\GdImage $image, array $operations, bool $preserveInput = false): array
+    public function run(\GdImage $image, array $operations, bool $preserveInput = false, Limits $limits = new Limits()): array
     {
         $degradations = [];
         $shared = $preserveInput;
 
         foreach ($operations as $operation) {
+            if ($operation instanceof PortableOperationInterface) {
+                // Use actual dimensions: Trim and trusted callbacks can change
+                // the geometry that the header-only plan could only estimate.
+                $projected = $operation->project(new Metadata($this->size($image), Format::Png));
+                $limits->checkOutput($projected, 'intermediate ' . $operation::class);
+            }
+
             // Solved here rather than handed down precomputed, so that what the
             // geometry is solved against is the raster that exists rather than a
             // size guessed before a rotation or an escape had its turn.
