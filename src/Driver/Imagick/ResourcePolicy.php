@@ -86,7 +86,7 @@ final class ResourcePolicy
         $constant = self::constant('listlength');
 
         if (null === $constant) {
-            // Older ImageMagick builds still receive the driver's ping/count check.
+            // Unavailable on older ImageMagick builds.
             // @codeCoverageIgnoreStart
             return $work();
             // @codeCoverageIgnoreEnd
