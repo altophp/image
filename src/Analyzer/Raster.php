@@ -111,7 +111,6 @@ final readonly class Raster
 
         $step = intdiv($header['bpp'], 8);
         $stride = intdiv($header['bpp'] * $width + 31, 32) * 4;
-        // Dimensions are bounded, so stride and payload arithmetic cannot overflow.
         if ($header['offset'] < 54 || $header['offset'] > \strlen($bytes)
             || $stride * $height > \strlen($bytes) - $header['offset']) {
             throw new InvalidArgumentException('This BMP has incomplete or overlapping pixel data.');
