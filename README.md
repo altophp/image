@@ -1,4 +1,4 @@
-# ALTO Image
+![ALTO Image](.github/alto-image.svg)
 
 Resize, crop and encode images from PHP with lazy execution, predictable output
 geometry and one decode for multiple derivatives.
