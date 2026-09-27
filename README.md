@@ -1,13 +1,33 @@
-![ALTO Image](.github/alto-image.svg)
+<h1 align="center">
+  <a href="https://altophp.com/image">
+    <img src=".github/alto-image.svg" alt="ALTO Image">
+  </a>
+</h1>
 
 Resize, crop and encode images from PHP with lazy execution, predictable output
 geometry and one decode for multiple derivatives.
 
-&nbsp; ![PHP Version](https://img.shields.io/badge/PHP-8.3%2B-00B7FF?logoColor=00B7FF&labelColor=050608)
-&nbsp; ![CI](https://img.shields.io/github/actions/workflow/status/altophp/image/CI.yml?branch=main&label=Tests&labelColor=050608&color=00B7FF)
-&nbsp; [![Packagist](https://img.shields.io/packagist/v/alto/image?label=Packagist&labelColor=050608&color=00B7FF)](https://packagist.org/packages/alto/image)
-&nbsp; ![License](https://img.shields.io/github/license/altophp/image?label=License&labelColor=050608&color=00B7FF)
-&nbsp; [![GitHub Sponsors](https://img.shields.io/github/sponsors/smnandre?logo=githubsponsors&logoColor=00B7FF&label=%20Sponsor&labelColor=050608&color=00B7FF)](https://github.com/sponsors/smnandre)
+<p align="center">
+  <img alt="PHP Version" src="https://img.shields.io/badge/PHP-8.3%2B-00B7FF?logoColor=00B7FF&amp;labelColor=050608">
+  <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/altophp/image/CI.yml?branch=main&amp;label=Tests&amp;labelColor=050608&amp;color=00B7FF">
+  <a href="https://packagist.org/packages/alto/image"><img alt="Packagist" src="https://img.shields.io/packagist/v/alto/image?label=Packagist&amp;labelColor=050608&amp;color=00B7FF"></a>
+  <img alt="License" src="https://img.shields.io/github/license/altophp/image?label=License&amp;labelColor=050608&amp;color=00B7FF">
+  <a href="https://github.com/sponsors/smnandre"><img alt="GitHub Sponsors" src="https://img.shields.io/github/sponsors/smnandre?logo=githubsponsors&amp;logoColor=00B7FF&amp;label=%20Sponsor&amp;labelColor=050608&amp;color=00B7FF"></a>
+</p>
+
+## Quick start
+
+```php
+use Alto\Image\Image;
+
+Image::open('photo.jpg')
+    ->cover(800, 450)
+    ->webp(80)
+    ->save('hero.webp');
+```
+
+Drivers are detected automatically and safe input limits are applied before
+decoding.
 
 `Image` represents one source and one requested output. `ImageSet` represents
 several outputs from that source and renders them together. Both are immutable
@@ -48,20 +68,6 @@ Inspect the available formats and local extension configuration with:
 ```bash
 vendor/bin/image doctor
 ```
-
-## Quick start
-
-```php
-use Alto\Image\Image;
-
-Image::open('photo.jpg')
-    ->cover(800, 450)
-    ->webp(80)
-    ->save('hero.webp');
-```
-
-Drivers are detected automatically and safe input limits are applied before
-decoding.
 
 ## Command line
 
