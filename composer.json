@@ -46,8 +46,7 @@
     "suggest": {
         "ext-gd": "Bundled with PHP. Enables the GD driver.",
         "ext-imagick": "TIFF, HEIC, CMYK, ICC conversion, SVG rasterization, and shrink-on-load.",
-        "league/flysystem": "Enables FlysystemStore, so derivatives can live on S3 or any other adapter.",
-        "phpunit/phpunit": "Required to extend Alto\\Image\\Test\\DriverTestCase when writing a driver."
+        "league/flysystem": "Enables FlysystemStore, so derivatives can live on S3 or any other adapter."
     },
     "autoload": {
         "psr-4": {

@@ -26,7 +26,7 @@ enum Support
     case Exact;
 
     /**
-     * Performed, but not as specified. The Result records a degradation.
+     * Performed, but not as specified. The Plan records the negotiated degradation.
      */
     case Approximate;
 

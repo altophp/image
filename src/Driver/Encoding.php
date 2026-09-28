@@ -52,10 +52,6 @@ final readonly class Encoding implements \Stringable
             throw new InvalidArgumentException(\sprintf('%s is lossless and has no quality setting.', $format->value));
         }
 
-        if (null !== $format && !$format->isLossy() && null !== $maxBytes) {
-            throw new InvalidArgumentException(\sprintf('%s is lossless and cannot search a lossy byte ceiling.', $format->value));
-        }
-
         if (null !== $format && Format::Jpeg !== $format && !$progressive) {
             throw new InvalidArgumentException('Progressive encoding is only configurable for JPEG.');
         }

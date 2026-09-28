@@ -308,16 +308,14 @@ final class TransformTest extends TestCase
         self::assertFalse($empty->contains(Resize::class));
 
         $appended = $empty->withResize(static fn(?Resize $resize): Resize => new Resize(320, 180));
-        self::assertSame('cover=320x180', (string) $appended->reshape(
-            static fn(?Resize $resize): Resize => ($resize ?? new Resize())->with(fit: \Alto\Image\Fit::Cover),
-        ));
+        self::assertSame('inside=320x180', (string) $appended);
 
         $withTrailingOperation = Transform::parse('inside=640x480|blur=2');
         self::assertSame('inside=320x240|blur=2', (string) $withTrailingOperation->withResize(
             static fn(?Resize $resize): Resize => ($resize ?? new Resize())->with(width: 320),
         ));
-        self::assertSame('inside=640x480|blur=2|cover=200x100', (string) $withTrailingOperation->reshape(
-            static fn(?Resize $resize): Resize => new Resize(200, 100, \Alto\Image\Fit::Cover),
+        self::assertSame('inside=640x480|blur=2|cover=200x100', (string) $withTrailingOperation->with(
+            new Resize(200, 100, \Alto\Image\Fit::Cover),
         ));
         self::assertSame(640, $withTrailingOperation->resize()?->width);
         self::assertTrue($withTrailingOperation->contains(Blur::class));

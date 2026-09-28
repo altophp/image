@@ -15,15 +15,13 @@ namespace Alto\Image\Tests\Test;
 
 use Alto\Image\Format;
 use Alto\Image\Source;
-use Alto\Image\Test\PngWriter;
-use Alto\Image\Tests\Support\SourceClassTestCase;
+use Alto\Image\Tests\Support\PngWriter;
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\TestCase;
 
 #[CoversNothing]
-final class PngWriterTest extends SourceClassTestCase
+final class PngWriterTest extends TestCase
 {
-    protected const string SUBJECT = PngWriter::class;
-
     public function testItWritesASinglePixelInterlacedPng(): void
     {
         $metadata = Source::bytes(PngWriter::interlaced(1, 1))->metadata();

@@ -14,7 +14,7 @@ $set = Image::open('photo.jpg')
     ->widths(640, 960, 1280)
     ->formats(Format::Webp, Format::Avif);
 
-$results = $set->store('public/media');
+$paths = $set->store('public/media');
 ```
 
 This request contains six outputs. `widths()`, `heights()`, and `formats()`
@@ -37,7 +37,7 @@ $set = $source->cover(1600, 900)->webp(82)
     ->and($source->cover(600, 400)->webp(80))
     ->and($source->cover(160, 160)->webp(75));
 
-$results = $set->store('public/media');
+$paths = $set->store('public/media');
 ```
 
 All members must share the same source, limits, and driver. Configure `using()`
@@ -59,8 +59,8 @@ Indexes are zero-based. `select()` preserves the requested order.
 
 ## Render or store
 
-`render()` returns one `Result` per output in memory. `store()` returns the same
-shape and writes each derivative to a signature-keyed store. `ImageSet` has no
+`bytes()` returns one encoded string per output in memory. `store()` writes
+each derivative to a signature-keyed store and returns the ordered paths. `ImageSet` has no
 `save()` method because one path cannot name several outputs.
 
 The one-decode guarantee applies to outputs rendered in the same batch. A store

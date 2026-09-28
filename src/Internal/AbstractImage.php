@@ -99,15 +99,7 @@ abstract readonly class AbstractImage
      */
     public function contain(?int $width = null, ?int $height = null, ?float $ratio = null, ?Anchor $gravity = null, ?Scaling $scaling = null, string|int $background = 0x00000000): static
     {
-        return $this->reshape(static fn(?Resize $resize): Resize => ($resize ?? new Resize($width, $height, Fit::Contain))->with(
-            width: $width,
-            height: $height,
-            fit: Fit::Contain,
-            gravity: $gravity,
-            scaling: $scaling,
-            ratio: $ratio,
-            background: \is_string($background) ? Colour::parse($background) : $background,
-        ));
+        return $this->apply((new Resize($width, $height, Fit::Contain, $gravity ?? Anchor::Center, $scaling ?? Scaling::Down, $ratio, \is_string($background) ? Colour::parse($background) : $background))->with(width: $width, height: $height));
     }
 
     /**
@@ -143,14 +135,7 @@ abstract readonly class AbstractImage
      */
     public function resize(?int $width = null, ?int $height = null, ?Fit $fit = null, ?float $ratio = null, Anchor|Focus|FocalPoint|null $gravity = null, ?Scaling $scaling = null): static
     {
-        return $this->reshape(static fn(?Resize $resize): Resize => ($resize ?? new Resize($width, $height, $fit ?? Fit::Inside, ratio: $ratio))->with(
-            width: $width,
-            height: $height,
-            fit: $fit,
-            gravity: $gravity,
-            scaling: $scaling,
-            ratio: $ratio,
-        ));
+        return $this->apply((new Resize($width, $height, $fit ?? Fit::Inside, $gravity ?? Anchor::Center, $scaling ?? Scaling::Down, $ratio))->with(width: $width, height: $height));
     }
 
     public function crop(int $width, int $height, Anchor|Focus|FocalPoint|null $gravity = null, ?int $x = null, ?int $y = null): static
@@ -399,14 +384,6 @@ abstract readonly class AbstractImage
     protected function mapSpecs(\Closure $map): static
     {
         return $this->withSpecs(array_map($map, $this->specs));
-    }
-
-    /**
-     * @param \Closure(?Resize): Resize $mutate
-     */
-    private function reshape(\Closure $mutate): static
-    {
-        return $this->mapSpecs(static fn(Output $spec): Output => $spec->with(transform: $spec->transform->reshape($mutate)));
     }
 
     /**

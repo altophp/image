@@ -148,7 +148,7 @@ final class ArchitectureTest extends TestCase
     public function testTheSurfaceIsStillTiered(): void
     {
         $core = [
-            'Image', 'ImageSet', 'Source', 'Result', 'Metadata', 'Size', 'Limits', 'Transform',
+            'Image', 'ImageSet', 'Source', 'Metadata', 'Size', 'Limits', 'Transform',
             'Format', 'Fit', 'Scaling', 'Anchor', 'Focus', 'FocalPoint', 'Colour',
             'Effort', 'MetadataPolicy', 'FailOn',
         ];
@@ -171,10 +171,7 @@ final class ArchitectureTest extends TestCase
             'Store/LocalStore', 'Store/FlysystemStore',
         ];
 
-        $testing = [
-            'Test/ArrayDriver', 'Test/Corpus',
-            'Test/DriverTestCase', 'Test/ImageAssertions',
-        ];
+        $testing = [];
 
         $exceptions = [
             'Exception/ImageExceptionInterface', 'Exception/CorruptImageException',
@@ -184,10 +181,10 @@ final class ArchitectureTest extends TestCase
             'Exception/UnsupportedOperationException',
         ];
 
-        self::assertCount(18, $core, 'The core surface changed. Review the permanent promises.');
+        self::assertCount(17, $core, 'The core surface changed. Review the permanent promises.');
         self::assertCount(31, $extension, 'The extension surface changed. Review the driver and operation contracts.');
         self::assertCount(6, $integrations, 'The built-in integrations changed.');
-        self::assertCount(4, $testing, 'The testing toolkit changed.');
+        self::assertCount(0, $testing, 'The testing toolkit must remain outside the public source surface.');
         self::assertCount(9, $exceptions, 'The exception hierarchy changed.');
 
         $promised = [...$core, ...$extension, ...$integrations, ...$testing, ...$exceptions];

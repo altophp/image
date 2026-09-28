@@ -43,7 +43,6 @@ use Alto\Image\Operation\Rotate;
 use Alto\Image\Operation\Sharpen;
 use Alto\Image\Operation\Tint;
 use Alto\Image\Operation\Trim;
-use Alto\Image\Result;
 use Alto\Image\Size;
 
 /**
@@ -126,7 +125,7 @@ final class GdDriver implements DriverInterface
         return Format::Gif === $format || Format::Webp === $format ? Support::Approximate : Support::Exact;
     }
 
-    public function canEncode(Encoding $encoding): Support
+    public function canEncode(Encoding $encoding, ?\Alto\Image\Metadata $source = null): Support
     {
         $format = $encoding->format;
 
@@ -134,13 +133,22 @@ final class GdDriver implements DriverInterface
             return Support::No;
         }
 
-        // ColourProfile is exact for an unprofiled source. A profiled source is
-        // reported at render time, when the driver finally knows it has one.
-        if (\in_array($encoding->metadata, [MetadataPolicy::Keep, MetadataPolicy::Copyright], true)) {
+        // Preserving a profile is a requirement, not an approximation GD can honour.
+        if (null !== $source?->icc && $encoding->metadata->keepsProfile()) {
+            return Support::No;
+        }
+
+        if (MetadataPolicy::Keep === $encoding->metadata) {
             return Support::Approximate;
         }
 
         if (\Alto\Image\Effort::Balanced !== $encoding->effort && !\in_array($format, [Format::Png, Format::Avif], true)) {
+            return Support::Approximate;
+        }
+
+        // Lossless is a WebP flag and a PNG default; asking any other format for
+        // it gets the nearest thing rather than a refusal.
+        if ($encoding->lossless && null !== $format && Format::Webp !== $format && Format::Png !== $format) {
             return Support::Approximate;
         }
 
@@ -149,7 +157,6 @@ final class GdDriver implements DriverInterface
 
     public function process(Plan $plan): array
     {
-        $started = microtime(true);
         $master = null;
         $results = [];
 
@@ -163,7 +170,7 @@ final class GdDriver implements DriverInterface
 
         foreach (array_keys($plan->requests) as $index) {
             if ($plan->isPassThrough($index)) {
-                $results[] = $this->passThrough($plan, $index, microtime(true) - $started);
+                $results[] = $plan->source->contents();
 
                 continue;
             }
@@ -171,21 +178,20 @@ final class GdDriver implements DriverInterface
             // Decode on the first output that needs pixels and reuse the result.
             $master ??= $this->decode($plan);
 
-            $results[] = $this->render($plan, $index, $master, $started, $index === $last);
+            $results[] = $this->render($plan, $index, $master, $index === $last);
         }
 
         return $results;
     }
 
-    private function render(Plan $plan, int $index, \GdImage $master, float $started, bool $isLast): Result
+    private function render(Plan $plan, int $index, \GdImage $master, bool $isLast): string
     {
         $spec = $plan->requests[$index];
         $expected = $plan->outputs[$index];
 
         // The pipeline preserves the shared master until an operation either
         // detaches into a new raster or genuinely needs a private copy.
-        [$image, $degradations] = $this->pipeline->run($master, $plan->operations($index), !$isLast, $plan->limits);
-        $degradations = [...$plan->degradations, ...$degradations];
+        [$image] = $this->pipeline->run($master, $plan->operations($index), !$isLast, $plan->limits);
 
         $actual = new Size(imagesx($image), imagesy($image));
 
@@ -210,42 +216,14 @@ final class GdDriver implements DriverInterface
         }
 
         $encoding = $spec->encoding->resolve($plan->input->format);
-        [$bytes, $encodeNotes] = $this->encode(
+        $bytes = $this->encode(
             $image,
             $encoding,
             $encoding->formatOr($plan->input->format),
             $carriesAlpha,
         );
 
-        if ($encoding->metadata->keepsProfile() && null !== $plan->input->icc) {
-            $encodeNotes[] = 'gd dropped the embedded ICC profile because GD cannot preserve colour profiles';
-        }
-
-        return new Result(
-            $expected->withoutIcc()->with(size: $actual, frames: 1, bytes: \strlen($bytes), hasMetadata: false),
-            $bytes,
-            $this->name(),
-            array_values(array_unique([...$degradations, ...$encodeNotes])),
-            microtime(true) - $started,
-        );
-    }
-
-    /**
-     * Copies source bytes for an unchanged output.
-     */
-    private function passThrough(Plan $plan, int $index, float $duration): Result
-    {
-        $bytes = $plan->source->contents();
-
-        return new Result(
-            $plan->outputs[$index]->with(bytes: \strlen($bytes)),
-            $bytes,
-            $this->name(),
-            $plan->degradations,
-            $duration,
-            null,
-            true,
-        );
+        return $bytes;
     }
 
     private function decode(Plan $plan): \GdImage
@@ -366,14 +344,23 @@ final class GdDriver implements DriverInterface
      * The resolved format is explicit because Encoding::$format may retain the
      * source format.
      *
-     * @return array{string, list<string>}
+     * @return string
      */
-    private function encode(\GdImage $image, Encoding $encoding, Format $format, bool $carriesAlpha): array
+    private function encode(\GdImage $image, Encoding $encoding, Format $format, bool $carriesAlpha): string
     {
-        $notes = [];
+        if (null === $encoding->maxBytes || !$format->isLossy() || $encoding->lossless) {
+            $bytes = $this->write($image, $format, $encoding, $encoding->qualityFor($format), $carriesAlpha);
 
-        if (null === $encoding->maxBytes || !$format->isLossy()) {
-            return [$this->write($image, $format, $encoding, $encoding->qualityFor($format), $carriesAlpha), $notes];
+            if (null !== $encoding->maxBytes && \strlen($bytes) > $encoding->maxBytes) {
+                throw DriverException::failed('gd', 'encoding within the byte ceiling', \sprintf(
+                    '%s is %d bytes, exceeding the %d byte ceiling',
+                    $format->value,
+                    \strlen($bytes),
+                    $encoding->maxBytes,
+                ));
+            }
+
+            return $bytes;
         }
 
         [$bytes, $quality, $met] = QualitySearch::under(
@@ -383,16 +370,16 @@ final class GdDriver implements DriverInterface
         );
 
         if (!$met) {
-            $notes[] = \sprintf(
+            throw DriverException::failed('gd', 'encoding within the byte ceiling', \sprintf(
                 'could not reach %d bytes: %s at quality %d is %d bytes, and going lower stops being the same picture',
                 $encoding->maxBytes,
                 $format->value,
                 $quality,
                 \strlen($bytes),
-            );
+            ));
         }
 
-        return [$bytes, $notes];
+        return $bytes;
     }
 
     private function write(\GdImage $image, Format $format, Encoding $encoding, int $quality, bool $carriesAlpha): string

@@ -433,7 +433,7 @@ final class ImagickPipeline
         }
 
         if (1.0 !== $operation->opacity) {
-            $mark->setImageAlphaChannel(\Imagick::ALPHACHANNEL_ACTIVATE);
+            $mark->setImageAlphaChannel(\Imagick::ALPHACHANNEL_SET);
             $mark->evaluateImage(\Imagick::EVALUATE_MULTIPLY, $operation->opacity, \Imagick::CHANNEL_ALPHA);
         }
 
@@ -562,7 +562,7 @@ final class ImagickPipeline
         try {
             $image->profileImage('icc', $profile);
         } catch (\ImagickException $error) {
-            return [$image, 'imagick could not apply the ICC profile: ' . $error->getMessage()];
+            throw DriverException::failed('imagick', 'applying the ICC profile', $error->getMessage());
         }
 
         return [$image, null];

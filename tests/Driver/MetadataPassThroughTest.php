@@ -41,12 +41,12 @@ final class MetadataPassThroughTest extends TestCase
         $bytes = substr($png, 0, -12) . self::chunk('ruSt', str_repeat('p', 4096)) . self::chunk($type, $text) . substr($png, -12);
         $request = Image::open(Source::bytes($bytes))->using('gd' === $driver ? new GdDriver() : new ImagickDriver());
 
-        $result = $request->withMetadata($policy)->render();
-        self::assertFalse($result->copied);
-        self::assertStringNotContainsString($private, $result->bytes);
-        self::assertStringNotContainsString($type, $result->bytes);
-        self::assertSame('2x2', (string) $result->metadata->size);
-        self::assertSame($bytes, $request->keepMetadata()->render()->bytes);
+        $result = $request->withMetadata($policy)->bytes();
+        self::assertNotSame($bytes, $result);
+        self::assertStringNotContainsString($private, $result);
+        self::assertStringNotContainsString($type, $result);
+        self::assertSame('2x2', (string) Source::bytes($result)->metadata()->size);
+        self::assertSame($bytes, $request->keepMetadata()->bytes());
     }
 
     /**
@@ -55,7 +55,7 @@ final class MetadataPassThroughTest extends TestCase
     public static function policies(): iterable
     {
         foreach (['gd', 'imagick'] as $driver) {
-            foreach ([MetadataPolicy::Strip, MetadataPolicy::ColourProfile, MetadataPolicy::Copyright] as $policy) {
+            foreach ([MetadataPolicy::Strip, MetadataPolicy::ColourProfile] as $policy) {
                 foreach (['iTXt', 'zTXt'] as $type) {
                     yield $driver . '-' . $policy->value . '-' . $type => [$driver, $policy, $type];
                 }

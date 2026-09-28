@@ -14,11 +14,14 @@ declare(strict_types=1);
 namespace Alto\Image\Tests\Driver;
 
 use Alto\Image\Driver\DriverInterface;
+use Alto\Image\Driver\Encoding;
 use Alto\Image\Driver\Gd\GdDriver;
+use Alto\Image\Driver\Support;
 use Alto\Image\Format;
 use Alto\Image\Image;
 use Alto\Image\MetadataPolicy;
-use Alto\Image\Test\DriverTestCase;
+use Alto\Image\Source;
+use Alto\Image\Tests\Support\DriverTestCase;
 
 /**
  * The conformance kit, applied to the gd driver.
@@ -48,18 +51,16 @@ final class GdConformanceTest extends DriverTestCase
         return $fixtures;
     }
 
-    public function testDroppingAnEmbeddedProfileIsReported(): void
+    public function testKeepingAnEmbeddedProfileIsRefused(): void
     {
         $source = self::corpus()->path('display-p3.jpg');
-        $result = Image::open($source)
-            ->using($this->driver())
-            ->fit(64, 64)
-            ->encode(Format::Jpeg, metadata: MetadataPolicy::ColourProfile)
-            ->render();
+        $metadata = Image::open($source)->sourceMetadata();
 
-        self::assertSame('embedded', Image::open($source)->sourceMetadata()->icc);
-        self::assertNull($result->metadata->icc);
-        self::assertStringContainsString('dropped the embedded ICC profile', implode("\n", $result->degradations));
+        self::assertSame('embedded', $metadata->icc);
+        self::assertSame(
+            Support::No,
+            $this->driver()->canEncode(new Encoding(Format::Jpeg, metadata: MetadataPolicy::ColourProfile), $metadata),
+        );
     }
 
     public function testAnimatedInputIsReportedAsAOneFrameApproximation(): void
@@ -68,9 +69,9 @@ final class GdConformanceTest extends DriverTestCase
             ->using($this->driver())
             ->fit(16, 16)
             ->encode(Format::Gif)
-            ->render();
+            ->bytes();
 
-        self::assertSame(1, $result->metadata->frames);
-        self::assertNotSame([], $result->degradations);
+        self::assertSame(1, Source::bytes($result)->metadata()->frames);
+        self::assertSame(Support::Approximate, $this->driver()->canDecode(Format::Gif));
     }
 }

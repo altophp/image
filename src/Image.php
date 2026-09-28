@@ -54,12 +54,12 @@ final readonly class Image extends AbstractImage implements \Stringable
         $spec = $this->specs[0];
         $this->requireMeasurable('metadata()', $spec);
 
-        return $spec->project($this->source->metadata()->oriented());
+        return $spec->project($this->source->metadata($this->limits?->maxBytes)->oriented());
     }
 
     public function sourceMetadata(): Metadata
     {
-        return $this->source->metadata()->oriented();
+        return $this->source->metadata($this->limits?->maxBytes)->oriented();
     }
 
     public function transform(): Transform
@@ -70,8 +70,11 @@ final readonly class Image extends AbstractImage implements \Stringable
     public function signature(): string
     {
         $spec = $this->specs[0];
+        $this->source->metadata($this->limits?->maxBytes);
 
         return substr(hash('xxh128', implode("\0", [
+            'alto-image-v2',
+            null === $this->driver ? 'auto' : $this->driver::class . ':' . $this->driver->name(),
             $this->source->signature(),
             $spec->signature(),
         ])), 0, 16);
@@ -82,16 +85,12 @@ final readonly class Image extends AbstractImage implements \Stringable
         return $this->source->name;
     }
 
-    public function save(string $path): Result
+    public function save(string $path): void
     {
-        $image = $this->forPath($path);
-        $result = $image->render();
-        AtomicWriter::write($path, $result->bytes);
-
-        return $result->withPath($path);
+        AtomicWriter::write($path, $this->forPath($path)->bytes());
     }
 
-    public function store(string|StoreInterface $store): Result
+    public function store(string|StoreInterface $store): string
     {
         $store = \is_string($store) ? new LocalStore($store) : $store;
 
@@ -100,19 +99,17 @@ final readonly class Image extends AbstractImage implements \Stringable
 
     public function bytes(): string
     {
-        return $this->render()->bytes;
+        $plan = $this->plan();
+
+        return $plan->driver->process($plan)[0];
     }
 
     public function dataUri(): string
     {
-        return $this->render()->dataUri();
-    }
-
-    public function render(): Result
-    {
         $plan = $this->plan();
+        $bytes = $plan->driver->process($plan)[0];
 
-        return $plan->driver->process($plan)[0];
+        return 'data:' . $plan->outputs[0]->format->mime() . ';base64,' . base64_encode($bytes);
     }
 
     /**

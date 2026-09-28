@@ -1,6 +1,6 @@
 # Writing a driver
 
-A driver converts a negotiated `Plan` into an ordered list of `Result` objects.
+A driver converts a negotiated `Plan` into an ordered list of encoded byte strings.
 It reports capabilities before decoding and processes all requested outputs in
 one batch.
 
@@ -14,12 +14,14 @@ one batch.
 | `capabilities(): Capabilities` | Describe the installed build |
 | `supports(OperationInterface $operation): Support` | Check one operation |
 | `canDecode(Format $format): Support` | Check an input format |
-| `canEncode(Encoding $encoding): Support` | Check an output request |
-| `process(Plan $plan): array` | Return an ordered list of `Result` objects |
+| `canEncode(Encoding $encoding, ?Metadata $source = null): Support` | Check an output request |
+| `process(Plan $plan): array` | Return an ordered list of encoded byte strings |
 
 `supports()`, `canDecode()`, and `canEncode()` are called during negotiation.
-Return `Support::Approximate` only when `process()` can complete the work and
-will record a specific explanation in `Result::$degradations`.
+Return `Support::Approximate` when the driver can complete the work with losses.
+Negotiation records these approximations in `Plan::$degradations`. The optional
+source metadata allows a driver to reject requirements such as preserving an
+embedded ICC profile.
 
 ## Process a plan
 
@@ -46,35 +48,12 @@ Use `$plan->isPassThrough($index)` to identify an output that should reuse the
 source bytes. Validate each encoded output against `$plan->output($index)` and
 throw a `DriverException` if the result violates the projected contract.
 
-## Run the conformance suite
+## Test the driver
 
-```php
-namespace Acme\ImageVips\Tests;
-
-use Acme\ImageVips\VipsDriver;
-use Alto\Image\Driver\DriverInterface;
-use Alto\Image\Test\DriverTestCase;
-
-final class VipsConformanceTest extends DriverTestCase
-{
-    protected function driver(): DriverInterface
-    {
-        return new VipsDriver();
-    }
-}
-```
-
-The suite verifies:
-
-- Projected output metadata against encoded output metadata.
-- Every declared readable and writable format.
-- Per-instance support against the capability table.
-- Degradation reporting for approximate work.
-- Ordered batch output and pass-through behavior.
-- Resize, crop, trim, extend, rotation, orientation, and alpha behavior.
-- Resampling quality on checkerboards, hard edges, and flat colours.
-- Source limits, malformed input, byte ceilings, and metadata stripping.
-- Native-handle access through `escape()`.
+The package's conformance helpers live in `tests/Support` and are not part of the
+distributed API. A driver package should own tests for its projected geometry,
+format and metadata preservation, ordered batches, pass-through behavior,
+source limits, malformed inputs, and encoding byte ceilings.
 
 ## Use the driver
 
@@ -84,11 +63,11 @@ Pass a driver to one request:
 use Acme\ImageVips\VipsDriver;
 use Alto\Image\Image;
 
-$result = Image::open('photo.jpg')
+$bytes = Image::open('photo.jpg')
     ->using(new VipsDriver())
     ->cover(800, 450)
     ->webp()
-    ->render();
+    ->bytes();
 ```
 
 Automatic detection includes only built-in drivers. Applications can select a

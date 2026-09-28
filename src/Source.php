@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Alto\Image;
 
 use Alto\Image\Exception\InvalidArgumentException;
+use Alto\Image\Exception\LimitExceededException;
 use Alto\Image\Exception\SourceNotFoundException;
 use Alto\Image\Internal\Fingerprint;
 use Alto\Image\Internal\HeaderReader;
@@ -26,6 +27,8 @@ use Alto\Image\Internal\HeaderReader;
 final class Source implements \Stringable
 {
     private ?Metadata $metadata = null;
+
+    private ?string $streamBuffer = null;
 
     private ?string $head = null;
 
@@ -167,7 +170,7 @@ final class Source implements \Stringable
     }
 
     /**
-     * Every byte. Drivers call this; probing never does.
+     * Every byte. Streams are buffered once within the configured byte ceiling.
      *
      * @throws SourceNotFoundException
      */
@@ -221,17 +224,37 @@ final class Source implements \Stringable
      *
      * Reads larger header segments only when the initial four kilobytes are
      * insufficient, typically for JPEG files with large EXIF thumbnails.
+     * Streams are buffered within maxBytes, defaulting to the Limits ceiling.
      */
-    public function metadata(): Metadata
+    public function metadata(?int $maxBytes = null): Metadata
     {
+        if (null === $maxBytes && null !== $this->metadata) {
+            return $this->metadata;
+        }
+
+        $maxBytes ??= (new Limits())->maxBytes;
+
+        if (null !== $this->stream && null === $this->buffer) {
+            $this->buffer = $this->drain($maxBytes);
+        }
+
+        $length = $this->length();
+
+        if (null !== $length && $length > $maxBytes) {
+            throw LimitExceededException::bytes($length, $maxBytes, $this->origin());
+        }
+
         if (null !== $this->metadata) {
             return $this->metadata;
         }
 
-        $length = $this->length();
         $read = 0;
 
         foreach (HeaderReader::HEADS as $wanted) {
+            if (0 !== $read && null !== $length && $read >= $length) {
+                break;
+            }
+
             $head = $this->head($wanted);
             $read = \strlen($head);
             $metadata = HeaderReader::tryRead($head, $length ?? $read);
@@ -317,20 +340,42 @@ final class Source implements \Stringable
      * A stream is read once and kept, because it may not rewind and a driver
      * will want the same bytes the probe saw.
      */
-    private function drain(): string
+    private function drain(?int $maxBytes = null): string
     {
+        $maxBytes ??= (new Limits())->maxBytes;
         $stream = $this->stream;
 
         if (!\is_resource($stream)) {
             throw new InvalidArgumentException('The stream backing this source has been closed.');
         }
 
-        if (stream_get_meta_data($stream)['seekable']) {
-            rewind($stream);
+        if (null === $this->streamBuffer) {
+            if (stream_get_meta_data($stream)['seekable']) {
+                rewind($stream);
+            }
+
+            $this->streamBuffer = '';
         }
 
-        $contents = stream_get_contents($stream);
+        while (true) {
+            $length = \strlen($this->streamBuffer);
 
-        return false === $contents ? '' : $contents;
+            if ($length > $maxBytes) {
+                throw LimitExceededException::bytes($length, $maxBytes, $this->origin());
+            }
+
+            if (feof($stream)) {
+                return $this->streamBuffer;
+            }
+
+            // Read at most one byte beyond the ceiling, without overflowing at PHP_INT_MAX.
+            $chunk = fread($stream, min(8192, max(0, $maxBytes - $length)) + 1);
+
+            if (false === $chunk || ('' === $chunk && !feof($stream))) {
+                throw new InvalidArgumentException('Could not read the stream backing this source.');
+            }
+
+            $this->streamBuffer .= $chunk;
+        }
     }
 }

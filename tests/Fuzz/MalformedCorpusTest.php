@@ -20,7 +20,7 @@ use Alto\Image\FailOn;
 use Alto\Image\Image;
 use Alto\Image\Limits;
 use Alto\Image\Source;
-use Alto\Image\Test\Corpus;
+use Alto\Image\Tests\Support\Corpus;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -96,7 +96,7 @@ final class MalformedCorpusTest extends TestCase
             ->within(new Limits(maxPixels: 20_000_000))
             ->cover(64, 64)
             ->png()
-            ->render();
+            ->bytes();
     }
 
     /**
@@ -110,7 +110,7 @@ final class MalformedCorpusTest extends TestCase
             ->within(new Limits(failOn: FailOn::None))
             ->cover(64, 64)
             ->png()
-            ->render();
+            ->bytes();
     }
 
     /**
@@ -123,7 +123,7 @@ final class MalformedCorpusTest extends TestCase
         $before = memory_get_peak_usage(true);
 
         try {
-            Image::open(self::corpus()->hostile()['pixel bomb'])->cover(64, 64)->png()->render();
+            Image::open(self::corpus()->hostile()['pixel bomb'])->cover(64, 64)->png()->bytes();
             self::fail('A 3.6 billion pixel image was handed to a decoder.');
         } catch (ImageExceptionInterface $refused) {
             self::assertStringContainsString('limit', $refused->getMessage());

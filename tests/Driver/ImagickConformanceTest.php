@@ -18,8 +18,9 @@ use Alto\Image\Driver\Imagick\ImagickDriver;
 use Alto\Image\Format;
 use Alto\Image\Image;
 use Alto\Image\MetadataPolicy;
-use Alto\Image\Test\DriverTestCase;
-use Alto\Image\Test\IccProfile;
+use Alto\Image\Source;
+use Alto\Image\Tests\Support\DriverTestCase;
+use Alto\Image\Tests\Support\IccProfile;
 
 /**
  * The conformance kit, applied to the imagick driver.
@@ -41,41 +42,41 @@ final class ImagickConformanceTest extends DriverTestCase
             ->using($this->driver())
             ->fit(64, 64)
             ->jpeg()
-            ->render();
+            ->bytes();
         $stripped = Image::open($source)
             ->using($this->driver())
             ->fit(64, 64)
             ->encode(Format::Jpeg, metadata: MetadataPolicy::Strip)
-            ->render();
+            ->bytes();
         $keptImage = new \Imagick();
-        $keptImage->readImageBlob($kept->bytes);
+        $keptImage->readImageBlob($kept);
         $strippedImage = new \Imagick();
-        $strippedImage->readImageBlob($stripped->bytes);
+        $strippedImage->readImageBlob($stripped);
         $profiles = $keptImage->getImageProfiles('icc', true);
         $profile = $profiles['icc'] ?? null;
 
-        self::assertSame('embedded', $kept->metadata->icc);
+        self::assertSame('embedded', Source::bytes($kept)->metadata()->icc);
         self::assertIsString($profile);
         self::assertSame(hash('sha256', IccProfile::displayP3()), hash('sha256', $profile));
         self::assertSame([], $strippedImage->getImageProfiles('icc', true));
-        self::assertNull($stripped->metadata->icc);
+        self::assertNull(Source::bytes($stripped)->metadata()->icc);
     }
 
     public function testTheDefaultStripsRealDeviceExifAndKeepRetainsIt(): void
     {
         $source = self::corpus()->path('device-exif.jpg');
-        $stripped = Image::open($source)->using($this->driver())->fit(64, 64)->jpeg()->render();
+        $stripped = Image::open($source)->using($this->driver())->fit(64, 64)->jpeg()->bytes();
         $kept = Image::open($source)
             ->using($this->driver())
             ->fit(64, 64)
             ->encode(Format::Jpeg, metadata: MetadataPolicy::Keep)
-            ->render();
+            ->bytes();
 
-        self::assertFalse($stripped->metadata->hasMetadata);
-        self::assertStringNotContainsString("Exif\x00\x00", $stripped->bytes);
-        self::assertTrue($kept->metadata->hasMetadata);
-        self::assertStringContainsString("Exif\x00\x00", $kept->bytes);
-        self::assertStringContainsString("Canon EOS 5D Mark II\x00", $kept->bytes);
+        self::assertFalse(Source::bytes($stripped)->metadata()->hasMetadata);
+        self::assertStringNotContainsString("Exif\x00\x00", $stripped);
+        self::assertTrue(Source::bytes($kept)->metadata()->hasMetadata);
+        self::assertStringContainsString("Exif\x00\x00", $kept);
+        self::assertStringContainsString("Canon EOS 5D Mark II\x00", $kept);
     }
 
     public function testItTransformsEveryFrameAndPreservesAnimationTiming(): void
@@ -84,10 +85,10 @@ final class ImagickConformanceTest extends DriverTestCase
             ->using($this->driver())
             ->fit(16, 16)
             ->encode(Format::Gif)
-            ->render();
+            ->bytes();
 
         $image = new \Imagick();
-        $image->readImageBlob($result->bytes);
+        $image->readImageBlob($result);
         $delays = [];
         $sizes = [];
 
@@ -96,12 +97,11 @@ final class ImagickConformanceTest extends DriverTestCase
             $sizes[] = [$frame->getImageWidth(), $frame->getImageHeight()];
         }
 
-        self::assertSame(2, $result->metadata->frames);
+        self::assertSame(2, Source::bytes($result)->metadata()->frames);
         self::assertSame(2, $image->getNumberImages());
         self::assertSame(1, $image->getImageIterations());
         self::assertSame([50, 50], $delays);
         self::assertSame([[16, 16], [16, 16]], $sizes);
-        self::assertSame([], $result->degradations);
     }
 
     public function testConvertingAnAnimationToAStaticFormatProducesOneFrame(): void
@@ -110,14 +110,14 @@ final class ImagickConformanceTest extends DriverTestCase
             ->using($this->driver())
             ->fit(16, 16)
             ->png();
-        $result = $request->render();
+        $result = $request->bytes();
 
         $image = new \Imagick();
-        $image->readImageBlob($result->bytes);
+        $image->readImageBlob($result);
 
         self::assertSame(2, $request->sourceMetadata()->frames);
         self::assertSame(1, $request->metadata()->frames);
-        self::assertSame(1, $result->metadata->frames);
+        self::assertSame(1, Source::bytes($result)->metadata()->frames);
         self::assertSame(1, $image->getNumberImages());
     }
 }

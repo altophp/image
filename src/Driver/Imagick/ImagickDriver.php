@@ -47,7 +47,6 @@ use Alto\Image\Operation\Sharpen;
 use Alto\Image\Operation\Solvable;
 use Alto\Image\Operation\Tint;
 use Alto\Image\Operation\Trim;
-use Alto\Image\Result;
 use Alto\Image\Size;
 
 /**
@@ -133,7 +132,7 @@ final class ImagickDriver implements DriverInterface
         return $format->isVector() ? Support::Approximate : Support::Exact;
     }
 
-    public function canEncode(Encoding $encoding): Support
+    public function canEncode(Encoding $encoding, ?\Alto\Image\Metadata $source = null): Support
     {
         $format = $encoding->format;
 
@@ -156,7 +155,7 @@ final class ImagickDriver implements DriverInterface
     }
 
     /**
-     * @return list<Result>
+     * @return list<string>
      */
     private function processWithinFrameLimit(Plan $plan): array
     {
@@ -171,7 +170,6 @@ final class ImagickDriver implements DriverInterface
             $probe->clear();
         }
 
-        $started = microtime(true);
         $master = null;
         $results = [];
 
@@ -186,13 +184,13 @@ final class ImagickDriver implements DriverInterface
         try {
             foreach (array_keys($plan->requests) as $index) {
                 if ($plan->isPassThrough($index)) {
-                    $results[] = $this->passThrough($plan, $index, microtime(true) - $started);
+                    $results[] = $plan->source->contents();
 
                     continue;
                 }
 
                 $master ??= $this->decode($plan);
-                $results[] = $this->render($plan, $index, $master, $started, $index === $last);
+                $results[] = $this->render($plan, $index, $master, $index === $last);
             }
         } finally {
             $master?->clear();
@@ -201,7 +199,7 @@ final class ImagickDriver implements DriverInterface
         return $results;
     }
 
-    private function render(Plan $plan, int $index, \Imagick $master, float $started, bool $isLast): Result
+    private function render(Plan $plan, int $index, \Imagick $master, bool $isLast): string
     {
         $spec = $plan->requests[$index];
         $expected = $plan->outputs[$index];
@@ -220,8 +218,7 @@ final class ImagickDriver implements DriverInterface
                 $image = $first;
             }
 
-            [$image, $notes] = $this->transform($image, $plan->operations($index), $plan->limits);
-            $degradations = [...$plan->degradations, ...$notes];
+            [$image] = $this->transform($image, $plan->operations($index), $plan->limits);
             $actual = $this->pipeline->size($image);
 
             if ($spec->transform->isMeasurable() && !$actual->equals($expected->size)) {
@@ -239,26 +236,9 @@ final class ImagickDriver implements DriverInterface
             // pixels can reach the encoder.
             $carriesAlpha = $spec->transform->estimate($plan->input)->hasAlpha;
 
-            [$bytes, $encodeNotes] = $this->encode($image, $encoding, $format, $carriesAlpha);
+            $bytes = $this->encode($image, $encoding, $format, $carriesAlpha);
 
-            if (Support::Approximate === $this->canEncode($encoding)) {
-                $encodeNotes[] = \sprintf(
-                    'imagick wrote %s but could not honour every encoding option',
-                    $format->value,
-                );
-            }
-
-            return new Result(
-                $expected->with(
-                    size: $actual,
-                    bytes: \strlen($bytes),
-                    hasMetadata: $encoding->metadata->keepsMetadata() && $plan->input->hasMetadata,
-                ),
-                $bytes,
-                $this->name(),
-                array_values(array_unique([...$degradations, ...$encodeNotes])),
-                microtime(true) - $started,
-            );
+            return $bytes;
         } finally {
             // The last output was handed the master itself, and process() clears
             // that one; clearing it here as well would be a double free.
@@ -266,21 +246,6 @@ final class ImagickDriver implements DriverInterface
                 $image->clear();
             }
         }
-    }
-
-    private function passThrough(Plan $plan, int $index, float $duration): Result
-    {
-        $bytes = $plan->source->contents();
-
-        return new Result(
-            $plan->outputs[$index]->with(bytes: \strlen($bytes)),
-            $bytes,
-            $this->name(),
-            $plan->degradations,
-            $duration,
-            null,
-            true,
-        );
     }
 
     private function checkFrames(\Imagick $image, Plan $plan): void
@@ -527,12 +492,10 @@ final class ImagickDriver implements DriverInterface
      * The resolved format is explicit because Encoding::$format may retain the
      * source format.
      *
-     * @return array{string, list<string>}
+     * @return string
      */
-    private function encode(\Imagick $image, Encoding $encoding, Format $format, bool $carriesAlpha): array
+    private function encode(\Imagick $image, Encoding $encoding, Format $format, bool $carriesAlpha): string
     {
-        $notes = [];
-
         foreach ($image as $frame) {
             $this->applyMetadataPolicy($frame, $encoding->metadata);
             $frame->setImageFormat($this->magickName($format));
@@ -545,8 +508,19 @@ final class ImagickDriver implements DriverInterface
 
         $image->setFirstIterator();
 
-        if (null === $encoding->maxBytes || !$format->isLossy()) {
-            return [$this->write($image, $format, $encoding->qualityFor($format), $carriesAlpha), $notes];
+        if (null === $encoding->maxBytes || !$format->isLossy() || $encoding->lossless) {
+            $bytes = $this->write($image, $format, $encoding->qualityFor($format), $carriesAlpha);
+
+            if (null !== $encoding->maxBytes && \strlen($bytes) > $encoding->maxBytes) {
+                throw DriverException::failed('imagick', 'encoding within the byte ceiling', \sprintf(
+                    '%s is %d bytes, exceeding the %d byte ceiling',
+                    $format->value,
+                    \strlen($bytes),
+                    $encoding->maxBytes,
+                ));
+            }
+
+            return $bytes;
         }
 
         [$bytes, $quality, $met] = QualitySearch::under(
@@ -556,16 +530,16 @@ final class ImagickDriver implements DriverInterface
         );
 
         if (!$met) {
-            $notes[] = \sprintf(
+            throw DriverException::failed('imagick', 'encoding within the byte ceiling', \sprintf(
                 'could not reach %d bytes: %s at quality %d is %d bytes, and going lower stops being the same picture',
                 $encoding->maxBytes,
                 $format->value,
                 $quality,
                 \strlen($bytes),
-            );
+            ));
         }
 
-        return [$bytes, $notes];
+        return $bytes;
     }
 
     private function write(\Imagick $image, Format $format, int $quality, bool $carriesAlpha): string
@@ -617,9 +591,16 @@ final class ImagickDriver implements DriverInterface
             // No reliable speed option is available for AVIF or HEIC. Effort is
             // reported as approximate by canEncode().
             Format::Avif, Format::Heic => null,
-            Format::Bmp => $image->setImageCompression(\Imagick::COMPRESSION_NO),
+            Format::Bmp => $this->bmpOptions($image),
             default => null,
         };
+    }
+
+    private function bmpOptions(\Imagick $image): void
+    {
+        $image->setImageCompression(\Imagick::COMPRESSION_NO);
+        $image->setImageType(\Imagick::IMGTYPE_TRUECOLOR);
+        $image->setOption('bmp:format', 'bmp3');
     }
 
     private function jpegOptions(\Imagick $image, Encoding $encoding): void
@@ -644,40 +625,11 @@ final class ImagickDriver implements DriverInterface
         // stripImage() removes the colour profile along with everything else, so
         // a policy that keeps the profile has to put it back.
         $profile = $policy->keepsProfile() ? $this->readProfile($image) : null;
-        $copyright = MetadataPolicy::Copyright === $policy ? $this->readCopyright($image) : [];
         $image->stripImage();
 
         if (null !== $profile) {
             $image->profileImage('icc', $profile);
         }
-
-        foreach ($copyright as $name => $value) {
-            $image->setImageProperty($name, $value);
-        }
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function readCopyright(\Imagick $image): array
-    {
-        try {
-            $properties = $image->getImageProperties('*', true);
-            // @codeCoverageIgnoreStart
-        } catch (\ImagickException) {
-            return [];
-            // @codeCoverageIgnoreEnd
-        }
-
-        $copyright = [];
-
-        foreach ($properties as $name => $value) {
-            if (\is_string($name) && \is_string($value) && 1 === preg_match('/(?:copyright|artist|author|creator|by-line)$/i', $name)) {
-                $copyright[$name] = $value;
-            }
-        }
-
-        return $copyright;
     }
 
     private function readProfile(\Imagick $image): ?string

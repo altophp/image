@@ -18,8 +18,8 @@ use Alto\Image\Driver\Gd\GdDriver;
 use Alto\Image\Driver\Imagick\ImagickDriver;
 use Alto\Image\Image;
 use Alto\Image\Scaling;
-use Alto\Image\Test\Corpus;
-use Alto\Image\Test\ImageAssertions;
+use Alto\Image\Tests\Support\Corpus;
+use Alto\Image\Tests\Support\ImageAssertions;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -73,9 +73,9 @@ final class ResamplingQualityTest extends TestCase
                 ->using($driver)
                 ->stretch($width, $height, Scaling::Both)
                 ->png()
-                ->render();
+                ->bytes();
 
-            $error = self::rmse($reference, $rendered->bytes);
+            $error = self::rmse($reference, $rendered);
 
             self::assertLessThan(1.5, $error, \sprintf(
                 "%s resampling 600x400 to %dx%d is %.2f away from the ideal area average.\n"
@@ -106,8 +106,8 @@ final class ResamplingQualityTest extends TestCase
         $source = self::corpus()->path('photo.png');
         $reference = self::areaAverage($source, 250, 167);
 
-        $ours = Image::open($source)->using(new GdDriver())->stretch(250, 167, Scaling::Both)->png()->render();
-        $oursError = self::rmse($reference, $ours->bytes);
+        $ours = Image::open($source)->using(new GdDriver())->stretch(250, 167, Scaling::Both)->png()->bytes();
+        $oursError = self::rmse($reference, $ours);
 
         $image = imagecreatefrompng($source);
         self::assertInstanceOf(\GdImage::class, $image);
@@ -158,9 +158,9 @@ final class ResamplingQualityTest extends TestCase
         $reference = self::areaAverage($source, 250, 167);
 
         foreach ([new GdDriver(), new ImagickDriver()] as $driver) {
-            $rendered = Image::open($source)->using($driver)->stretch(250, 167, Scaling::Both)->png()->render();
+            $rendered = Image::open($source)->using($driver)->stretch(250, 167, Scaling::Both)->png()->bytes();
 
-            self::assertLessThan(1.5, self::rmse($reference, $rendered->bytes), \sprintf(
+            self::assertLessThan(1.5, self::rmse($reference, $rendered), \sprintf(
                 '%s did not land on the area average, so the two drivers no longer agree.',
                 $driver->name(),
             ));
@@ -198,9 +198,9 @@ final class ResamplingQualityTest extends TestCase
             ->using(new GdDriver())
             ->fit($target, $target)
             ->png()
-            ->render();
+            ->bytes();
 
-        self::assertNoMoire($result->bytes, new GdDriver(), $maxSpread, \sprintf('1024 down to %d', $target));
+        self::assertNoMoire($result, new GdDriver(), $maxSpread, \sprintf('1024 down to %d', $target));
     }
 
     /**
@@ -217,9 +217,9 @@ final class ResamplingQualityTest extends TestCase
             ->using(new GdDriver())
             ->fit(128, 64)
             ->png()
-            ->render();
+            ->bytes();
 
-        $raster = self::raster($result->bytes, new GdDriver());
+        $raster = self::raster($result, new GdDriver());
         $middle = intdiv($raster->height, 2);
 
         self::assertLessThan(16.0, $raster->luma(1, $middle), 'The black half went grey.');
@@ -236,9 +236,9 @@ final class ResamplingQualityTest extends TestCase
             ->using(new GdDriver())
             ->fit(80, 80)
             ->png()
-            ->render();
+            ->bytes();
 
-        self::assertImageIsFlat($result->bytes, new GdDriver(), 6);
+        self::assertImageIsFlat($result, new GdDriver(), 6);
     }
 
     /**

@@ -342,36 +342,6 @@ final readonly class Transform implements \Stringable, \Countable
     }
 
     /**
-     * Restates the shape, rewriting the trailing Resize or appending a new one.
-     *
-     * The difference from withResize() is where it will reach. A shaping verb
-     * restates the box when the box is the last thing said, and adds a step when
-     * something has happened since:
-     *
-     *     ->fit(400, 400)->cover(300, 200)          one resize, restated
-     *     ->fit(400, 400)->trim()->cover(300, 200)  three steps, in that order
-     *
-     * Reaching past the trim in the second case would silently reorder what the
-     * caller wrote, and a transform is an ordered list precisely because the
-     * order is a decision.
-     *
-     * @param \Closure(Resize|null): Resize $mutate
-     */
-    public function reshape(\Closure $mutate): self
-    {
-        $last = $this->operations[\count($this->operations) - 1] ?? null;
-
-        if ($last instanceof Resize) {
-            $operations = $this->operations;
-            $operations[\count($operations) - 1] = $mutate($last);
-
-            return new self(array_values($operations));
-        }
-
-        return new self([...$this->operations, $mutate(null)]);
-    }
-
-    /**
      * The last resize in the operation list.
      */
     public function resize(): ?Resize

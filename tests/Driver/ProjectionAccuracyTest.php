@@ -18,8 +18,8 @@ use Alto\Image\Driver\Gd\GdDriver;
 use Alto\Image\Driver\Imagick\ImagickDriver;
 use Alto\Image\Driver\Support;
 use Alto\Image\Image;
-use Alto\Image\Test\Corpus;
-use Alto\Image\Test\ImageAssertions;
+use Alto\Image\Tests\Support\Corpus;
+use Alto\Image\Tests\Support\ImageAssertions;
 use Alto\Image\Transform;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -73,23 +73,27 @@ final class ProjectionAccuracyTest extends TestCase
                     continue;
                 }
 
-                $image = Image::open($path)->using($driver)->transformedBy($parsed)->png();
+                $image = Image::open($path)->using($driver)->transformedBy($parsed)->encode(
+                    \Alto\Image\Format::Png,
+                    metadata: \Alto\Image\MetadataPolicy::Strip,
+                );
 
                 if (Support::No === $driver->canDecode($image->sourceMetadata()->format)) {
                     continue;
                 }
 
                 $projected = $image->size();
-                $result = $image->render();
+                $result = $image->bytes();
+                $actual = \Alto\Image\Source::bytes($result)->metadata()->size;
 
                 self::assertSame(
                     (string) $projected,
-                    (string) $result->size(),
-                    \sprintf('%s: "%s" on %s projected %s and produced %s.', $driver->name(), $transform, $label, $projected, $result->size()),
+                    (string) $actual,
+                    \sprintf('%s: "%s" on %s projected %s and produced %s.', $driver->name(), $transform, $label, $projected, $actual),
                 );
 
-                // The Result reports one number; the encoded file has to be that number.
-                self::assertImageSize($result->bytes, $projected, \sprintf('%s: "%s" on %s', $driver->name(), $transform, $label));
+                // Independently decode the encoded file to verify the projection.
+                self::assertImageSize($result, $projected, \sprintf('%s: "%s" on %s', $driver->name(), $transform, $label));
 
                 ++$checked;
             }

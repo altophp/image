@@ -91,7 +91,7 @@ Create a responsive image set and write it to a local derivative store:
 use Alto\Image\Format;
 use Alto\Image\Image;
 
-$results = Image::open('photo.jpg')
+$paths = Image::open('photo.jpg')
     ->cover(ratio: 16 / 9)
     ->widths(640, 960, 1280)
     ->formats(Format::Webp, Format::Avif)
@@ -99,7 +99,7 @@ $results = Image::open('photo.jpg')
 ```
 
 The resulting `ImageSet` contains six images in the requested order. Missing
-outputs are rendered together with one source decode.
+outputs are rendered together with one source decode. `store()` returns their ordered paths.
 
 Combine outputs with different shapes or qualities using `and()`:
 
@@ -108,7 +108,7 @@ use Alto\Image\Image;
 
 $source = Image::open('upload.jpg');
 
-$results = $source->cover(1600, 900)->webp(82)
+$paths = $source->cover(1600, 900)->webp(82)
     ->and($source->cover(600, 400)->webp(80))
     ->and($source->cover(160, 160)->webp(75))
     ->store('public/media');
@@ -128,7 +128,7 @@ $image = Image::open('photo.jpg')
 
 $size = $image->size();
 $key = $image->signature();
-$result = $image->render();
+$bytes = $image->bytes();
 ```
 
 Transforms can also be parsed from their stable string representation:
@@ -138,10 +138,10 @@ use Alto\Image\Image;
 use Alto\Image\Transform;
 
 $transform = Transform::parse('cover=1280x720,g:top-right|sharpen');
-$result = Image::open('photo.jpg')
+$bytes = Image::open('photo.jpg')
     ->transformedBy($transform)
     ->webp()
-    ->render();
+    ->bytes();
 ```
 
 ## Storage
@@ -157,7 +157,7 @@ $store = new LocalStore('public/media');
 $image = Image::open('photo.jpg')->cover(800, 450)->webp();
 
 $path = $store->path($image);
-$result = $image->store($store);
+$path = $image->store($store);
 $removed = $store->prune(new DateTimeImmutable('-30 days'));
 ```
 

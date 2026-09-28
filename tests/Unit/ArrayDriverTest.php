@@ -21,11 +21,11 @@ use Alto\Image\Image;
 use Alto\Image\Operation\Blur;
 use Alto\Image\Operation\Escape;
 use Alto\Image\Source;
-use Alto\Image\Test\ArrayDriver;
-use PHPUnit\Framework\Attributes\CoversClass;
+use Alto\Image\Tests\Support\ArrayDriver;
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(ArrayDriver::class)]
+#[CoversNothing]
 final class ArrayDriverTest extends TestCase
 {
     public function testItReportsTheCapabilitiesOfAFakeRasterDriver(): void
@@ -46,12 +46,12 @@ final class ArrayDriverTest extends TestCase
     public function testItRecordsBatchesAndReturnsReadableMarkerBytes(): void
     {
         $driver = new ArrayDriver();
-        $results = Image::open($this->source())->using($driver)->cover(ratio: 16 / 9)->widths(320, 640)->webp()->render();
+        $results = Image::open($this->source())->using($driver)->cover(ratio: 16 / 9)->widths(320, 640)->webp()->bytes();
 
         self::assertSame(1, $driver->batches());
         self::assertSame(['320x180', '640x360'], $driver->outputs());
         self::assertCount(2, $driver->calls());
-        self::assertStringStartsWith("alto:fake\nphoto (in memory)\n", $results[0]->bytes);
+        self::assertStringStartsWith("alto:fake\nphoto (in memory)\n", $results[0]);
 
         $driver->forget();
 
@@ -64,10 +64,9 @@ final class ArrayDriverTest extends TestCase
         $output = Output::new()->with(encoding: new Encoding(Format::Webp));
         $driver = new ArrayDriver([$output->signature() => 'canned']);
 
-        $result = Image::open($this->source())->using($driver)->webp()->render();
+        $result = Image::open($this->source())->using($driver)->webp()->bytes();
 
-        self::assertSame('canned', $result->bytes);
-        self::assertSame(6, $result->metadata->bytes);
+        self::assertSame('canned', $result);
     }
 
     private function source(): Source

@@ -32,8 +32,8 @@ final class AnimationLimitsTest extends TestCase
     {
         $bytes = $this->sequence('gif');
         $before = \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_MEMORY);
-        $result = Image::open(Source::bytes($bytes))->using(new ImagickDriver())->within(Limits::none())->keepMetadata()->render();
-        self::assertSame($bytes, $result->bytes);
+        $result = Image::open(Source::bytes($bytes))->using(new ImagickDriver())->within(Limits::none())->keepMetadata()->bytes();
+        self::assertSame($bytes, $result);
         self::assertSame($before, \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_MEMORY));
     }
 
@@ -48,7 +48,7 @@ final class AnimationLimitsTest extends TestCase
         $bad = str_repeat('x', $length['length']);
         $png = substr_replace($png, $bad . pack('N', crc32('IDAT' . $bad)), $offset + 4, $length['length'] + 4);
         $this->expectException(CorruptImageException::class);
-        Image::open(Source::bytes($png))->using(new ImagickDriver())->grayscale()->render();
+        Image::open(Source::bytes($png))->using(new ImagickDriver())->grayscale()->bytes();
     }
 
     #[DataProvider('formats')]
@@ -57,15 +57,15 @@ final class AnimationLimitsTest extends TestCase
         $bytes = $this->sequence($format);
         $request = Image::open(Source::bytes($bytes))->using(new ImagickDriver())->within(new Limits(maxFrames: 2));
         $this->expectException(LimitExceededException::class);
-        $request->grayscale()->png()->render();
+        $request->grayscale()->png()->bytes();
     }
 
     public function testAllowedAnimationKeepsItsFramesAndTiming(): void
     {
         $bytes = $this->sequence('gif');
-        $output = Image::open(Source::bytes($bytes))->using(new ImagickDriver())->within(new Limits(maxFrames: 3))->grayscale()->render();
+        $output = Image::open(Source::bytes($bytes))->using(new ImagickDriver())->within(new Limits(maxFrames: 3))->grayscale()->bytes();
         $decoded = new \Imagick();
-        $decoded->readImageBlob($output->bytes);
+        $decoded->readImageBlob($output);
         self::assertSame(3, $decoded->getNumberImages());
         foreach ($decoded as $frame) {
             self::assertSame(10, $frame->getImageDelay());
@@ -83,7 +83,7 @@ final class AnimationLimitsTest extends TestCase
         $previous = \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_LISTLENGTH);
         $image = Image::open(Source::bytes($bytes))->using(new ImagickDriver());
         try {
-            $image->within(new Limits(maxFrames: $maximum))->render();
+            $image->within(new Limits(maxFrames: $maximum))->bytes();
             self::assertSame(3, $maximum);
         } catch (LimitExceededException) {
             self::assertSame(2, $maximum);

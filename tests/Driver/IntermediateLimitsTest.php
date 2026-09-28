@@ -35,9 +35,9 @@ final class IntermediateLimitsTest extends TestCase
     public function testImagickNativeRotationCanvasIsBoundedBeforeConforming(): void
     {
         $image = $this->image('imagick')->transformedBy(Transform::parse('cover=10x10,s:both|rotate=45|crop=1x1', only: ['cover', 'rotate', 'crop']));
-        self::assertSame('1x1', (string) $image->within(new Limits(maxPixels: 289))->render()->metadata->size);
+        self::assertSame('1x1', (string) Source::bytes($image->within(new Limits(maxPixels: 289))->bytes())->metadata()->size);
         $this->expectException(LimitExceededException::class);
-        $image->within(new Limits(maxPixels: 225))->render();
+        $image->within(new Limits(maxPixels: 225))->bytes();
     }
 
     #[DataProvider('oversizedTransforms')]
@@ -45,7 +45,7 @@ final class IntermediateLimitsTest extends TestCase
     {
         $image = $this->image($driver)->within($limits)->transformedBy(Transform::parse($transform, only: ['cover', 'crop', 'extend', 'rotate']));
         $this->expectException(LimitExceededException::class);
-        $image->render();
+        $image->bytes();
     }
 
     /**
@@ -65,8 +65,8 @@ final class IntermediateLimitsTest extends TestCase
     public function testBoundedIntermediateAndExplicitNonStrictPolicyRemainSupported(string $driver): void
     {
         foreach ([new Limits(maxPixels: 121), new Limits(maxPixels: 100, strict: false)] as $limits) {
-            $result = $this->image($driver)->within($limits)->transformedBy(Transform::parse('cover=11x11,s:both|crop=1x1'))->render();
-            self::assertSame('1x1', (string) $result->metadata->size);
+            $result = $this->image($driver)->within($limits)->transformedBy(Transform::parse('cover=11x11,s:both|crop=1x1'))->bytes();
+            self::assertSame('1x1', (string) Source::bytes($result)->metadata()->size);
         }
     }
 
@@ -83,7 +83,7 @@ final class IntermediateLimitsTest extends TestCase
             ->within(new Limits(maxPixels: 100))
             ->transformedBy(Transform::parse('trim|inside=10x,s:both|crop=1x1'));
         $this->expectException(LimitExceededException::class);
-        $image->render();
+        $image->bytes();
     }
 
     /**

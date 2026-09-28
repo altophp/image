@@ -76,7 +76,10 @@ final class GdDriverTest extends TestCase
 
         self::assertSame(Support::No, $driver->canDecode(Format::Svg));
         self::assertSame(Support::No, $driver->canEncode(new Encoding(Format::Svg)));
-        self::assertSame(Support::Approximate, $driver->canEncode(new Encoding(Format::Jpeg, metadata: MetadataPolicy::Keep)));
+        self::assertSame(Support::Approximate, $driver->canEncode(
+            new Encoding(Format::Jpeg, metadata: MetadataPolicy::Keep),
+            new \Alto\Image\Metadata(new Size(10, 10), Format::Jpeg, hasMetadata: true),
+        ));
         self::assertSame(Support::Approximate, $driver->canEncode(new Encoding(Format::Jpeg, effort: Effort::Best)));
     }
 

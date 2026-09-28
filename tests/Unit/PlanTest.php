@@ -32,7 +32,6 @@ use Alto\Image\Operation\OperationInterface;
 use Alto\Image\Operation\Orient;
 use Alto\Image\Operation\Resize;
 use Alto\Image\Operation\Rotate;
-use Alto\Image\Result;
 use Alto\Image\Source;
 use Alto\Image\Transform;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -226,13 +225,13 @@ final readonly class NegotiationDriver implements DriverInterface
         return $this->decode;
     }
 
-    public function canEncode(Encoding $encoding): Support
+    public function canEncode(Encoding $encoding, ?\Alto\Image\Metadata $source = null): Support
     {
         return $this->encode;
     }
 
     public function process(Plan $plan): array
     {
-        return [new Result($plan->output(0), '')];
+        return array_fill(0, \count($plan->requests), 'fixture bytes');
     }
 }

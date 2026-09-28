@@ -11,7 +11,7 @@ declare(strict_types=1);
  * the LICENSE file distributed with this source code.
  */
 
-namespace Alto\Image\Test;
+namespace Alto\Image\Tests\Support;
 
 use Alto\Image\Driver\Capabilities;
 use Alto\Image\Driver\DriverInterface;
@@ -22,7 +22,6 @@ use Alto\Image\Driver\Support;
 use Alto\Image\Format;
 use Alto\Image\Operation\Escape;
 use Alto\Image\Operation\OperationInterface;
-use Alto\Image\Result;
 
 /**
  * A recording test driver that returns projected metadata without decoding.
@@ -72,7 +71,7 @@ final class ArrayDriver implements DriverInterface
         return $format->isVector() ? Support::Approximate : Support::Exact;
     }
 
-    public function canEncode(Encoding $encoding): Support
+    public function canEncode(Encoding $encoding, ?\Alto\Image\Metadata $source = null): Support
     {
         return null !== $encoding->format && $encoding->format->isVector() ? Support::No : Support::Exact;
     }
@@ -92,13 +91,7 @@ final class ArrayDriver implements DriverInterface
                 'output' => (string) $output->size,
             ];
 
-            $results[] = new Result(
-                $output->with(bytes: \strlen($bytes)),
-                $bytes,
-                $this->name(),
-                $plan->degradations,
-                0.0,
-            );
+            $results[] = $bytes;
         }
 
         return $results;

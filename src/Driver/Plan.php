@@ -67,7 +67,7 @@ final readonly class Plan
         }
 
         $limits ??= new Limits();
-        $raw = $source->metadata();
+        $raw = $source->metadata($limits->maxBytes);
         $limits->check($raw, $source->origin());
         $limits->checkComplete($raw, $source->tail(), $source->origin());
 
@@ -85,7 +85,7 @@ final readonly class Plan
         $best = null;
 
         foreach ($pool as $candidate) {
-            $verdict = self::interview($candidate, $input, $specs);
+            $verdict = self::interview($candidate, $source, $input, $specs);
 
             if (\is_string($verdict)) {
                 $refusals[] = \sprintf('%-42s %s', $candidate::class . ':', $verdict);
@@ -151,31 +151,35 @@ final readonly class Plan
             throw new \Alto\Image\Exception\InvalidArgumentException(\sprintf('Plan output index %d does not exist.', $index));
         }
 
-        $spec = $this->requests[$index];
+        return self::isUnchanged($this->source, $this->input, $this->requests[$index]);
+    }
 
-        // Trim and Escape prevent an exact comparison with the source.
+    private static function isUnchanged(Source $source, Metadata $input, Output $spec): bool
+    {
+        // Copying bytes is only honest when the output is known exactly. A trim
+        // or an escape means it is not, whatever the steps look like.
         if (!$spec->transform->isMeasurable()) {
             return false;
         }
 
-        if (!$spec->encoding->isPassThrough($this->input)) {
+        if (!$spec->encoding->isPassThrough($input)) {
             return false;
         }
 
         // An orientation the source still carries has to be baked into the
         // pixels, so those bytes are not the bytes that were asked for.
-        if (1 !== $this->source->metadata()->orientation) {
+        if (1 !== $source->metadata()->orientation) {
             return false;
         }
 
-        foreach ($this->operations($index) as $operation) {
+        foreach ($spec->transform->operations as $operation) {
             // A Plan orients before it projects, so an explicit Orient in the
             // chain has nothing left to do and does not defeat the copy.
             if ($operation instanceof Orient) {
                 continue;
             }
 
-            if (!$operation instanceof Solvable || !$operation->solve($this->input->size)->isNoop($this->input->size)) {
+            if (!$operation instanceof Solvable || !$operation->solve($input->size)->isNoop($input->size)) {
                 return false;
             }
         }
@@ -227,7 +231,7 @@ final readonly class Plan
      *
      * @return list<string>|string a refusal, or the degradations it accepts
      */
-    private static function interview(DriverInterface $driver, Metadata $input, array $specs): array|string
+    private static function interview(DriverInterface $driver, Source $source, Metadata $input, array $specs): array|string
     {
         $decode = $driver->canDecode($input->format);
 
@@ -244,10 +248,10 @@ final readonly class Plan
             : [];
 
         foreach ($specs as $spec) {
-            $encode = $driver->canEncode($spec->encoding->resolve($input->format));
+            $encode = $driver->canEncode($spec->encoding->resolve($input->format), $input);
 
-            if (Support::No === $encode) {
-                return \sprintf('cannot write %s', $spec->encoding->formatOr($input->format)->value);
+            if (Support::No === $encode && !self::isUnchanged($source, $input, $spec)) {
+                return \sprintf('cannot write %s%s', $spec->encoding->formatOr($input->format)->value, null !== $input->icc && $spec->encoding->metadata->keepsProfile() ? ' while preserving the embedded ICC profile' : '');
             }
 
             if (Support::Approximate === $encode) {
@@ -265,8 +269,9 @@ final readonly class Plan
                     return \sprintf('cannot apply %s', $operation::class);
                 }
 
-                // The pipeline reports the concrete degradation at runtime. The
-                // conformance suite requires a note for approximate operations.
+                if (Support::Approximate === $support) {
+                    $degradations[] = \sprintf('%s approximates %s', $driver->name(), $operation::class);
+                }
             }
         }
 

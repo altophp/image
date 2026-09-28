@@ -22,7 +22,7 @@ if (!is_dir($output)) {
     mkdir($output, 0775, true);
 }
 
-$result = Image::open(__DIR__.'/source.png')
+Image::open(__DIR__.'/source.png')
     ->cover(800, 450)
     ->webp(80)
     ->save($output.'/hero.webp');
@@ -48,13 +48,12 @@ scaling and crop placement.
 ## Understand the result
 
 The request is immutable and lazy: pixel decoding happens at `save()` here.
-The `.webp` filename does not select the format; the explicit `webp(80)` call
-does. ALTO applies the source's display orientation when rendering.
+The explicit `webp(80)` call selects the format and quality. When no format is
+configured, `save()` infers it from a recognised filename extension. ALTO applies
+the source's display orientation when rendering.
 
-The returned `Result` contains encoded bytes, actual dimensions and format,
-driver, duration, and any `degradations`. A degradation means the chosen driver
-approximated part of the request; see [driver capabilities](drivers.md).
-Encoded sizes and pixels can vary between driver versions.
+`save()` returns `void`; it writes the image or throws an exception. Use
+`bytes()` for an encoded string and `dataUri()` for an inline data URI.
 
 ## Continue
 

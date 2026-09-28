@@ -106,3 +106,7 @@ through `vendor/bin/image doctor`.
 The complete encoding request includes the format, quality, effort, metadata
 policy, byte limit, progressive mode, lossless mode, and driver-specific
 options. The request remains immutable when one of these settings changes.
+
+An encoding byte ceiling is a hard limit: the driver throws if it cannot meet
+it. Lossy formats may reduce quality; lossless output and formats such as PNG
+are encoded once and checked without discarding image information.

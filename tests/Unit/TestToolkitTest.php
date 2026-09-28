@@ -15,15 +15,14 @@ namespace Alto\Image\Tests\Unit;
 
 use Alto\Image\Driver\Gd\GdDriver;
 use Alto\Image\Exception\StoreException;
-use Alto\Image\Test\Corpus;
-use Alto\Image\Test\DriverTestCase;
-use Alto\Image\Test\ImageAssertions;
+use Alto\Image\Tests\Support\Corpus;
+use Alto\Image\Tests\Support\DriverTestCase;
+use Alto\Image\Tests\Support\ImageAssertions;
 use PHPUnit\Framework\AssertionFailedError;
-use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(Corpus::class)]
-#[CoversClass(DriverTestCase::class)]
+#[CoversNothing]
 final class TestToolkitTest extends TestCase
 {
     use ImageAssertions;

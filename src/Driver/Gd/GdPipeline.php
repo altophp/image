@@ -530,7 +530,7 @@ final class GdPipeline
             throw DriverException::failed('gd', 'reading the overlay', \sprintf('"%s" is not readable.', $operation->path));
         }
 
-        $mark = imagecreatefromstring($bytes);
+        $mark = @imagecreatefromstring($bytes);
 
         if (false === $mark) {
             throw DriverException::failed('gd', 'decoding the overlay', \sprintf('"%s" is not an image GD can read.', $operation->path));
@@ -548,21 +548,20 @@ final class GdPipeline
 
         imagealphablending($image, true);
 
-        if (1.0 === $operation->opacity) {
-            imagecopy($image, $mark, $x + $operation->margin, $y + $operation->margin, 0, 0, $inner->width, $inner->height);
-        } else {
-            imagecopymerge(
-                $image,
-                $mark,
-                $x + $operation->margin,
-                $y + $operation->margin,
-                0,
-                0,
-                $inner->width,
-                $inner->height,
-                (int) round($operation->opacity * 100),
-            );
+        if (1.0 !== $operation->opacity) {
+            imagepalettetotruecolor($mark);
+
+            // Multiply coverage so transparent pixels stay transparent.
+            for ($row = 0; $row < $inner->height; ++$row) {
+                for ($column = 0; $column < $inner->width; ++$column) {
+                    $pixel = imagecolorat($mark, $column, $row);
+                    $alpha = 127 - (int) round((127 - (($pixel >> 24) & 0x7F)) * $operation->opacity);
+                    imagesetpixel($mark, $column, $row, ($alpha << 24) | ($pixel & 0xFFFFFF));
+                }
+            }
         }
+
+        imagecopy($image, $mark, $x + $operation->margin, $y + $operation->margin, 0, 0, $inner->width, $inner->height);
 
         imagealphablending($image, false);
 

@@ -60,7 +60,7 @@ actual outputs. Smaller inputs are not enlarged by default.
 - [Convert a colour profile](transform/colour-profile.md)
 
 Every method returns a new `Image` or `ImageSet`. The source is unchanged.
-Drivers can report an approximate result through `Result::$degradations`.
+Negotiation records driver approximations in `Plan::$degradations`.
 
 ## Inspect a request
 
@@ -69,7 +69,7 @@ use `sourceSize()` and `sourceMetadata()` for the original or `size()` and
 `metadata()` for the projected result. `transform()` returns the ordered
 operations; `signature()` returns the stable derivative identity.
 
-Terminal methods perform the work: `render()` returns a `Result`, `save()`
+Terminal methods perform the work: `bytes()` returns an encoded string, `save()`
 writes one caller-selected path, and `store()` uses a derivative store.
 `bytes()` and `dataUri()` are in-memory conveniences. Pixel decoding remains
 deferred until a terminal method or analyzer needs it.
@@ -92,3 +92,5 @@ $transform = Transform::parse($value, only: ['cover', 'crop', 'sharpen']);
 ```
 
 Exclude `overlay` unless referenced paths are constrained independently.
+
+Shaping methods append operations in call order. For example, `fit(400, 400)->cover(300, 200)` keeps both steps. `widths()` and `heights()` vary the last resize when generating an image set.
